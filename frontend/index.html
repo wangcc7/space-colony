@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>星际殖民地 V8</title>
+<style>
+:root{--bg:#0a0e1a;--card:#111827;--border:#1e3a5f;--accent:#00d4ff;--accent2:#7c3aed;--red:#ef4444;--green:#22c55e;--gold:#fbbf24;--text:#e2e8f0;--muted:#64748b;--sidebar-w:180px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;font-size:14px;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;-webkit-tap-highlight-color:transparent}
+#app{display:flex;height:100vh}
+#sidebar{width:var(--sidebar-w);background:linear-gradient(180deg,#0d1526,#111827);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;transition:transform .3s;z-index:100}
+#sidebar h2{padding:12px;font-size:16px;color:var(--accent);text-align:center;border-bottom:1px solid var(--border)}
+.nav-item{padding:9px 14px;cursor:pointer;transition:all .2s;border-left:3px solid transparent;font-size:13px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.nav-item:hover,.nav-item.active{background:rgba(0,212,255,.1);border-left-color:var(--accent);color:var(--accent)}
+#main{flex:1;overflow-y:auto;padding:12px;position:relative;-webkit-overflow-scrolling:touch}
+#topbar{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:var(--card);border-radius:8px;margin-bottom:10px;flex-wrap:wrap;gap:4px}
+#topbar .resources{display:flex;gap:8px;font-size:12px;flex-wrap:wrap}
+#topbar .res{display:flex;align-items:center;gap:2px}
+#topbar .res .val{font-weight:bold;font-size:13px}
+#topbar .datetime{color:var(--accent);font-size:13px;font-weight:bold;white-space:nowrap}
+#topbar .daily-event{color:var(--gold);font-size:12px;font-weight:bold;background:rgba(251,191,36,.1);padding:2px 8px;border-radius:4px;border:1px solid rgba(251,191,36,.3);white-space:nowrap}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px}
+.card h3{color:var(--accent);margin-bottom:6px;font-size:15px}
+.btn{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;touch-action:manipulation}
+.btn-primary{background:var(--accent);color:#000}.btn-primary:hover{filter:brightness(1.2)}
+.btn-danger{background:var(--red);color:#fff}.btn-green{background:var(--green);color:#fff}
+.btn-gold{background:var(--gold);color:#000}.btn-accent2{background:var(--accent2);color:#fff}
+.btn-sm{padding:4px 8px;font-size:11px}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+input,select,textarea{background:#1a2332;border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px;width:100%;margin:2px 0}
+textarea{min-height:50px;resize:vertical}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:5px 6px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--accent);font-weight:600;font-size:11px}
+.up{color:var(--red)}.down{color:var(--green)}.flat{color:var(--muted)}
+.stock-row{cursor:pointer;transition:background .2s}.stock-row:hover{background:rgba(0,212,255,.05)}
+.tab-bar{display:flex;gap:3px;margin-bottom:8px;overflow-x:auto;flex-wrap:wrap}
+.tab-btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);font-size:11px;white-space:nowrap}
+.tab-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+#kline-canvas{background:#0d1117;border-radius:6px;width:100%;height:220px}
+.login-box{max-width:360px;margin:60px auto;text-align:center;padding:0 16px}
+.login-box h1{color:var(--accent);margin-bottom:16px;font-size:22px}
+.login-box input{margin:4px 0}
+.notif-badge{background:var(--red);color:#fff;border-radius:10px;padding:1px 5px;font-size:10px;margin-left:3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.flex-gap{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.progress-bar{background:#1a2332;border-radius:4px;height:14px;overflow:hidden;position:relative}
+.progress-bar .fill{height:100%;border-radius:4px;transition:width .3s}
+.progress-bar .label{position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:10px;line-height:14px;color:#fff;font-weight:bold}
+#chat-panel{background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;height:calc(100vh - 110px)}
+#chat-messages{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;-webkit-overflow-scrolling:touch}
+.chat-msg{padding:5px 8px;border-radius:6px;font-size:12px;max-width:88%}
+.chat-msg.npc{background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);align-self:flex-start}
+.chat-msg.user{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);align-self:flex-end}
+.chat-msg .author{font-weight:bold;font-size:11px;margin-bottom:1px}
+.chat-msg .time{font-size:9px;color:var(--muted);margin-left:6px}
+#chat-input-bar{display:flex;gap:4px;padding:6px;border-top:1px solid var(--border)}
+#chat-input-bar input{flex:1;margin:0}
+.npc-personality{display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;margin-left:3px}
+.npc-personality.trader{background:rgba(251,191,36,.2);color:var(--gold)}
+.npc-personality.miner{background:rgba(34,197,94,.2);color:var(--green)}
+.npc-personality.scholar{background:rgba(0,212,255,.2);color:var(--accent)}
+.npc-personality.warrior{background:rgba(239,68,68,.2);color:var(--red)}
+.npc-personality.merchant{background:rgba(124,58,237,.2);color:var(--accent2)}
+.god-log{font-size:11px;padding:3px 6px;border-left:3px solid var(--gold);margin:3px 0;background:rgba(251,191,36,.05)}
+.territory-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;margin:3px 0;transition:all .2s}
+.territory-card.mine{border-color:var(--accent);background:rgba(0,212,255,.05)}
+.territory-card .owner-tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold}
+.territory-card .owner-tag.free{background:rgba(100,116,139,.2);color:var(--muted)}
+.territory-card .owner-tag.owned{background:rgba(0,212,255,.2);color:var(--accent)}
+.territory-card .owner-tag.mine-tag{background:rgba(34,197,94,.2);color:var(--green)}
+/* V7 新增样式 */
+.cooldown-timer{color:var(--gold);font-size:12px;font-weight:bold}
+.limit-badge{font-size:10px;font-weight:bold;padding:1px 4px;border-radius:3px;margin-left:3px}
+.limit-up{background:rgba(239,68,68,.2);color:var(--red)}
+.limit-down{background:rgba(34,197,94,.2);color:var(--green)}
+.toast{position:fixed;top:50px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);color:var(--gold);padding:8px 16px;border-radius:8px;font-size:13px;z-index:1000;animation:fadeInOut 3s}
+@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
+.stock-notification{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--gold)}
+.ipo-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px}
+.ipo-row:last-child{border-bottom:none}
+.daily-event-card{background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(0,212,255,.1));border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 12px;margin-bottom:8px}
+.daily-event-card .event-title{color:var(--gold);font-weight:bold;font-size:14px}
+.daily-event-card .event-desc{color:var(--text);font-size:12px;margin-top:2px}
+/* 手机端侧边栏 */
+#menu-toggle{display:none;position:fixed;top:8px;left:8px;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--accent);font-size:18px;cursor:pointer}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
+@media(max-width:768px){
+  #menu-toggle{display:block}
+  #sidebar{position:fixed;left:0;top:0;height:100vh;transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  #sidebar-overlay.show{display:block}
+  #main{padding:8px;padding-top:44px}
+  .login-box{margin:30px auto}
+  .login-box h1{font-size:20px}
+  table{font-size:11px}
+  th,td{padding:3px 4px}
+  .card{padding:10px}
+  .card h3{font-size:14px}
+  .btn{padding:5px 10px;font-size:11px}
+  input,select,textarea{font-size:14px;padding:8px 10px}
+  .grid2{grid-template-columns:1fr}
+  .grid3{grid-template-columns:1fr 1fr}
+  #kline-canvas{height:180px}
+  #chat-panel{height:calc(100vh - 100px)}
+  #topbar .resources{gap:6px;font-size:11px}
+  #topbar .datetime{font-size:11px}
+  .territory-card{padding:6px}
+  .orderbook{flex-direction:column}
+  #topbar .daily-event{font-size:10px;padding:1px 5px}
+}
+/* V8 战争纪元 样式 */
+.raid-target{border:1px solid var(--border);border-radius:6px;padding:8px;margin:4px 0;cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center}
+.raid-target:hover{border-color:var(--red);background:rgba(239,68,68,.05)}
+.raid-target.has-bounty{border-color:var(--gold);box-shadow:0 0 8px rgba(251,191,36,.3)}
+.formation-btn{padding:6px 12px;border:2px solid var(--border);border-radius:6px;cursor:pointer;background:transparent;color:var(--text);font-size:12px;transition:all .2s}
+.formation-btn.selected{border-color:var(--accent);background:rgba(0,212,255,.1);color:var(--accent)}
+.defense-slot{background:var(--card);border:2px dashed var(--border);border-radius:8px;padding:8px;text-align:center;min-height:60px}
+.defense-slot.occupied{border-style:solid;border-color:var(--accent2)}
+.battle-report{border-left:3px solid var(--red);padding:6px 8px;margin:4px 0;background:rgba(239,68,68,.05);cursor:pointer;transition:all .2s}
+.battle-report.victory{border-left-color:var(--green);background:rgba(34,197,94,.05)}
+.battle-report.unread{font-weight:bold}
+.shield-badge{display:inline-block;background:rgba(0,212,255,.2);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold}
+.bounty-amount{color:var(--gold);font-weight:bold;font-size:16px}
+.arena-rank{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)}
+.arena-rank .rank-num{width:24px;font-weight:bold;color:var(--gold)}
+.spy-op{padding:8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:transparent;color:var(--text);width:100%;text-align:left;margin:3px 0;transition:all .2s}
+.spy-op:hover{border-color:var(--accent2);background:rgba(124,58,237,.05)}
+.notif-bell{cursor:pointer;font-size:18px;position:relative}
+.notif-dropdown{position:absolute;right:0;top:30px;width:320px;max-height:400px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.notif-item{padding:8px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer}
+.notif-item.unread{background:rgba(0,212,255,.05)}
+.notif-item:hover{background:rgba(255,255,255,.03)}
+.war-score-bar{display:flex;height:20px;border-radius:10px;overflow:hidden;margin:4px 0}
+.war-score-bar .atk-score{background:var(--red);transition:width .3s}
+.war-score-bar .def-score{background:var(--accent);transition:width .3s}
+.phase-timeline{border-left:2px solid var(--border);padding-left:12px;margin:6px 0}
+.phase-step{padding:4px 0;font-size:12px}
+.phase-step::before{content:"●";margin-right:6px}
+.phase-step.win::before{color:var(--green)}
+.phase-step.lose::before{color:var(--red)}
+.phase-step.shield::before{color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="menu-toggle" onclick="toggleSidebar()">☰</div>
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div id="app">
+<div id="sidebar">
+<h2>🌌 星际殖民地</h2>
+<div class="nav-item" onclick="showPanel('colony')">🏠 殖民地</div>
+<div class="nav-item" onclick="showPanel('stocks')">📈 股票市场</div>
+<div class="nav-item" onclick="showPanel('market')">💰 资源市场</div>
+<div class="nav-item" onclick="showPanel('futures')">📊 期货市场</div>
+<div class="nav-item" onclick="showPanel('territories')">🗺️ 领地</div>
+<div class="nav-item" onclick="showPanel('factions')">🏛️ 派系</div>
+<div class="nav-item" onclick="showPanel('expeditions')">🚀 探索</div>
+<div class="nav-item" onclick="showPanel('forum')">💬 论坛</div>
+<div class="nav-item" onclick="showPanel('chat')">📡 聊天室</div>
+<div class="nav-item" onclick="showPanel('npc')">🤖 NPC</div>
+<div class="nav-item" onclick="showPanel('leaderboard')">🏆 排行</div>
+<div class="nav-item" onclick="showPanel('achievements')">🎖️ 成就</div>
+<div class="nav-item" onclick="showPanel('tasks')">📋 每日任务</div>
+<div class="nav-item" onclick="showPanel('craft')">⚗️ 合成</div>
+<div class="nav-item" onclick="showPanel('war')">⚔️ 战争</div>
+<div class="nav-item" onclick="showPanel('arena')">🏟️ 竞技场</div>
+<div class="nav-item" onclick="showPanel('bounty')">🗡️ 赏金</div>
+<div class="nav-item" onclick="showPanel('spy')">🕵️ 间谍</div>
+<div class="nav-item" onclick="showPanel('god')">👁️ 上帝AI</div>
+<div style="flex:1"></div>
+<div class="nav-item" onclick="logout()">🚪 退出</div>
+</div>
+<div id="main">
+<div id="topbar">
+<div class="resources" id="res-bar"></div>
+<div class="daily-event" id="daily-event-bar" style="display:none"></div>
+<div class="datetime" id="datetime"></div>
+<div style="position:relative" id="notif-center">
+<span class="notif-bell" onclick="toggleNotif()">🔔<span class="notif-badge" id="notif-count" style="display:none">0</span></span>
+<div class="notif-dropdown" id="notif-dropdown" style="display:none"></div>
+</div>
+</div>
+<div id="login-screen">
+<div class="login-box">
+<h1>🌌 星际殖民地</h1>
+<div id="login-form">
+<input id="l_user" placeholder="用户名" autocomplete="username">
+<input id="l_pass" type="password" placeholder="密码" autocomplete="current-password">
+<button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="doLogin()">登录</button>
+<p style="margin-top:10px;color:var(--muted);font-size:12px">没有账号？<a href="#" onclick="document.getElementById('login-form').style.display='none';document.getElementById('reg-form').style.display='block';return false" style="color:var(--accent)">注册</a></p>
+</div>
+<div id="reg-form" style="display:none">
+<input id="r_user" placeholder="用户名（≥2位）">
+<input id="r_email" placeholder="邮箱">
+<input id="r_pass" type="password" placeholder="密码（≥6位）">
+<input id="r_colony" placeholder="殖民地名称">
+<select id="r_planet"><option value="terran">类地星球</option><option value="gas">气态星球</option><option value="ice">冰冻星球</option><option value="volcanic">火山星球</option></select>
+<button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="doRegister()">注册</button>
+<p style="margin-top:10px;color:var(--muted);font-size:12px">已有账号？<a href="#" onclick="document.getElementById('login-form').style.display='block';document.getElementById('reg-form').style.display='none';return false" style="color:var(--accent)">登录</a></p>
+</div>
+</div>
+</div>
+<div id="game-content" style="display:none">
+<div id="panel-colony" class="panel"></div>
+<div id="panel-stocks" class="panel"></div>
+<div id="panel-market" class="panel"></div>
+<div id="panel-futures" class="panel"></div>
+<div id="panel-territories" class="panel"></div>
+<div id="panel-factions" class="panel"></div>
+<div id="panel-expeditions" class="panel"></div>
+<div id="panel-forum" class="panel"></div>
+<div id="panel-chat" class="panel"></div>
+<div id="panel-npc" class="panel"></div>
+<div id="panel-leaderboard" class="panel"></div>
+<div id="panel-achievements" class="panel"></div>
+<div id="panel-tasks" class="panel"></div>
+<div id="panel-craft" class="panel"></div>
+<div id="panel-god" class="panel"></div>
+<div id="panel-war" class="panel"></div>
+<div id="panel-arena" class="panel"></div>
+<div id="panel-bounty" class="panel"></div>
+<div id="panel-spy" class="panel"></div>
+</div>
+</div>
+</div>
+<script>
+let token='',uid=0,cid=0,colony=null,chatTimer=null,chatLastId=0;
+let collectCooldown=0,collectTimer=null;
+let terrCollectCooldowns={},terrCollectTimers={};
+let currentDailyEvent=null;
+let stockNotifications=[];
+const API=window.location.origin+'/api';
+const RES_NAMES={minerals:'矿物',energy:'能量',food:'食物',gold:'金币',rare_metals:'稀有金属',crystals:'水晶',plasma:'等离子体',dark_matter:'暗物质',antimatter:'反物质',culture:'文化',score:'积分'};
+const RES_ICONS={minerals:'⛏️',energy:'⚡',food:'🌾',gold:'🪙',score:'⭐'};
+const SPEC_NAMES={military:'军事⚔️',economic:'经济💰',cultural:'文化🎭',research:'科研🔬',none:'未选择'};
+const NPC_STYLES={trader:'星商💰',miner:'矿工⛏️',scholar:'学者📚',warrior:'战士⚔️',merchant:'商人🏪'};
+
+// ============ Toast 通知 ============
+function showToast(msg, duration){
+    duration = duration || 3000;
+    const t=document.createElement('div');
+    t.className='toast';
+    t.textContent=msg;
+    document.body.appendChild(t);
+    setTimeout(()=>{if(t.parentNode)t.parentNode.removeChild(t)},duration);
+}
+
+// ============ 时间显示 ============
+function updateClock(){
+    const now=new Date();
+    const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+    const h=String(now.getHours()).padStart(2,'0'),mi=String(now.getMinutes()).padStart(2,'0'),s=String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('datetime').textContent=`📅${y}年${m}月${d}日 ${h}:${mi}:${s}`;
+}
+setInterval(updateClock,1000);updateClock();
+
+// ============ 侧边栏 ============
+function toggleSidebar(){
+    const sb=document.getElementById('sidebar'),ov=document.getElementById('sidebar-overlay');
+    sb.classList.toggle('open');ov.classList.toggle('show');
+}
+
+// ============ Auth ============
+let api401Count=0;
+async function api(path,opts={}){
+    const h={'Content-Type':'application/json'};
+    if(token)h['Authorization']='Bearer '+token;
+    try{
+        const r=await fetch(API+path,{...opts,headers:{...h,...(opts.headers||{})}});
+        if(r.status===401){
+            api401Count++;
+            if(api401Count>3){token='';uid=0;localStorage.removeItem('sc_token');localStorage.removeItem('sc_uid');document.getElementById('login-screen').style.display='block';document.getElementById('game-content').style.display='none';}
+            return null;
+        }
+        api401Count=0;
+        if(r.status===400){
+            const data=await r.json();
+            throw new Error(data.detail||data.message||'操作失败');
+        }
+        if(!r.ok){
+            const data=await r.json().catch(()=>({}));
+            throw new Error(data.detail||data.message||`请求失败(${r.status})`);
+        }
+        return r.json();
+    }catch(e){
+        if(e.message&&e.message!=='操作失败'&&!e.message.startsWith('请求失败'))throw e;
+        return null;
+    }
+}
+async function doLogin(){
+    token='';uid=0;localStorage.removeItem('sc_token');localStorage.removeItem('sc_uid');
+    try{
+        const r=await api('/login',{method:'POST',body:JSON.stringify({username:l_user.value,password:l_pass.value})});
+        if(r&&r.access_token){token=r.access_token;uid=r.user_id;localStorage.setItem('sc_token',token);localStorage.setItem('sc_uid',uid);api401Count=0;enterGame()}
+        else alert('登录失败，请检查用户名和密码');
+    }catch(e){alert(e.message||'登录失败');}
+}
+async function doRegister(){
+    token='';uid=0;localStorage.removeItem('sc_token');localStorage.removeItem('sc_uid');
+    try{
+        const r=await api('/register',{method:'POST',body:JSON.stringify({username:r_user.value,email:r_email.value,password:r_pass.value,colony_name:r_colony.value,planet_type:r_planet.value})});
+        if(r&&r.access_token){token=r.access_token;uid=r.user_id;localStorage.setItem('sc_token',token);localStorage.setItem('sc_uid',uid);api401Count=0;enterGame()}
+        else alert('注册失败，请稍后重试');
+    }catch(e){alert(e.message||'注册失败');}
+}
+function logout(){token='';uid=0;localStorage.removeItem('sc_token');localStorage.removeItem('sc_uid');if(chatTimer)clearInterval(chatTimer);if(collectTimer)clearInterval(collectTimer);Object.values(terrCollectTimers).forEach(t=>clearInterval(t));document.getElementById('login-screen').style.display='block';document.getElementById('game-content').style.display='none'}
+function enterGame(){document.getElementById('login-screen').style.display='none';document.getElementById('game-content').style.display='block';loadColony();loadDailyEvent();showPanel('colony');updateNotifCount();setInterval(updateNotifCount,30000)}
+
+// ============ Resource Bar ============
+function updateResBar(c){
+    if(!c)return;
+    const items=['minerals','energy','food','gold','score'].map(k=>`<span class="res">${RES_ICONS[k]||''}<span class="val">${formatNum(c[k]||0)}</span>${RES_NAMES[k]}</span>`);
+    document.getElementById('res-bar').innerHTML=items.join('');
+}
+function formatNum(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e4)return(n/1e3).toFixed(1)+'K';return String(n)}
+
+// ============ Daily Event ============
+async function loadDailyEvent(){
+    try{
+        const r=await api('/events/today');
+        if(r&&r.events&&r.events.length>0){
+            currentDailyEvent=r.events[0];
+            const bar=document.getElementById('daily-event-bar');
+            bar.textContent='🎮 '+r.events[0].title;
+            bar.style.display='inline-block';
+        }
+    }catch(e){}
+}
+
+// ============ Panel ============
+function showPanel(name){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    const el=document.getElementById('panel-'+name);
+    if(el)el.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    if(event?.target?.classList)n=event.target.closest('.nav-item')?.classList?.add('active');
+    // 手机端关闭侧边栏
+    if(window.innerWidth<=768){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show');}
+    const loaders={colony:loadColony,stocks:loadStocks,market:loadMarket,futures:loadFuturesPanel,territories:loadTerritories,factions:loadFactions,expeditions:loadExpeditions,forum:loadForum,chat:initChat,npc:loadNpc,leaderboard:loadLeaderboard,achievements:loadAchievements,tasks:loadDailyTasks,craft:loadCraft,god:loadGod,war:loadWar,arena:loadArena,bounty:loadBounty,spy:loadSpy};
+    if(loaders[name])loaders[name]();
+}
+
+// ============ Colony ============
+async function loadColony(){
+    const r=await api('/colony');if(!r)return;
+    colony=r.colony;cid=colony.id;updateResBar(colony);
+    const lvlUpCost=colony.level*500;
+    const canLvlUp=colony.gold>=lvlUpCost&&colony.xp>=colony.level*100;
+    let h='';
+    // V7: 每日事件卡片
+    if(currentDailyEvent){
+        h+=`<div class="daily-event-card"><div class="event-title">🎮 ${currentDailyEvent.title||currentDailyEvent.name||''}</div><div class="event-desc">${currentDailyEvent.description||''}</div></div>`;
+    }
+    h+=`<div class="card"><h3>🏠 ${colony.name}</h3>
+    <p>等级: <b style="color:var(--gold)">${colony.level}</b> | 攻击: ${colony.attack_power} | 防御: ${colony.defense_power} | 积分: ${colony.score}</p>
+    <p>经验: ${colony.xp}/${colony.level*100} | 专精: <b>${SPEC_NAMES[colony.specialization||'none']}</b></p>
+    <div class="progress-bar"><div class="fill" style="width:${Math.min(100,colony.xp/(colony.level*100)*100)}%;background:var(--accent)"></div><div class="label">${colony.xp}/${colony.level*100} XP</div></div>
+    <div class="flex-gap" style="margin-top:8px">
+    <button class="btn btn-primary" id="collect-btn" onclick="doCollect()">💰 收取资源</button>
+    <button class="btn btn-gold" onclick="levelUpColony()" ${canLvlUp?'':'disabled'}>⬆️ 升级(${lvlUpCost}金)</button>
+    <button class="btn btn-accent2" onclick="showSpecPanel()">🔄 专精</button>
+    </div>
+    <div id="collect-cooldown-display" class="cooldown-timer" style="margin-top:4px"></div>
+    </div>`;
+    h+=`<div class="card"><h3>💎 高级资源</h3><div class="grid3">
+    <div>稀有金属: <b>${colony.rare_metals||0}</b></div><div>水晶: <b>${colony.crystals||0}</b></div><div>等离子体: <b>${colony.plasma||0}</b></div>
+    <div>暗物质: <b>${colony.dark_matter||0}</b></div><div>反物质: <b>${colony.antimatter||0}</b></div><div>文化: <b>${colony.culture||0}</b></div>
+    </div></div>`;
+    // Buildings
+    h+=`<div class="card"><h3>🏗️ 建筑</h3>`;
+    if(r.buildings&&r.buildings.length){
+        h+=`<div class="grid2">`;
+        r.buildings.forEach(b=>{
+            const upCost_m=Math.round(50*(b.level+1)*1.5);
+            const upCost_e=Math.round(30*(b.level+1)*1.5);
+            h+=`<div style="padding:4px;border:1px solid var(--border);border-radius:4px"><b>${b.display_name}</b> Lv${b.level} <button class="btn btn-sm btn-gold" onclick="upgradeBldg(${b.slot})">⬆升级</button><br><small style="color:var(--muted)">费用: ⛏️${upCost_m} ⚡${upCost_e}</small></div>`;
+        });
+        h+=`</div>`;
+    }
+    h+=`<div style="margin-top:8px"><select id="build-type"><option value="mine">矿场</option><option value="solar_plant">太阳能</option><option value="farm">农场</option><option value="barracks">兵营</option><option value="gold_mine">金矿</option><option value="lab">实验室</option><option value="library">图书馆</option><option value="theater">剧场</option></select>
+    <input id="build-slot" type="number" placeholder="槽位0-11" min="0" max="11" value="0" style="width:80px;display:inline">
+    <button class="btn btn-primary btn-sm" onclick="doBuild()">建造</button></div></div>`;
+    // Techs
+    h+=`<div class="card"><h3>🔬 科技</h3><div class="grid2">`;
+    (r.techs||[]).forEach(t=>{
+        const cost_g=(t.level+1)*200;
+        h+=`<div style="padding:4px;border:1px solid var(--border);border-radius:4px"><b>${t.display_name}</b> Lv${t.level} <button class="btn btn-sm btn-gold" onclick="researchTech('${t.tech_type}')">研究(${cost_g}金)</button></div>`;
+    });
+    h+=`</div></div>`;
+    // Philosophy
+    h+=`<div class="card"><h3>🎭 哲学</h3><div class="grid2">`;
+    (r.philosophies||[]).forEach(p=>{h+=`<div>${p.display_name} Lv${p.current_level}/${p.max_level} <button class="btn btn-sm btn-gold" onclick="doPhilosophy('${p.philosophy_type}')">研究(${p.cost_gold}金)</button></div>`});
+    h+=`</div></div>`;
+    document.getElementById('panel-colony').innerHTML=h;
+}
+
+// V7: 收取资源冷却系统
+async function doCollect(){
+    try{
+        const r=await api('/colony/collect',{method:'POST'});
+        if(r){
+            showToast(`收取${r.collected_hours}小时产出：矿+${r.gains.minerals} 能+${r.gains.energy} 食+${r.gains.food} 金+${r.gains.gold}`);
+            startCollectCooldown(60);
+            loadColony();
+        }
+    }catch(e){
+        if(e.message&&e.message.includes('冷却中')){
+            const match=e.message.match(/(\d+)秒/);
+            if(match)startCollectCooldown(parseInt(match[1]));
+            else startCollectCooldown(60);
+            showToast(e.message);
+        }else{
+            alert(e.message||'收取失败');
+        }
+    }
+}
+
+function startCollectCooldown(seconds){
+    collectCooldown=seconds;
+    const btn=document.getElementById('collect-btn');
+    const display=document.getElementById('collect-cooldown-display');
+    if(btn){
+        btn.disabled=true;
+        btn.textContent=`冷却中 (${seconds}s)`;
+    }
+    if(display)display.textContent=`冷却剩余: ${seconds}s`;
+    if(collectTimer)clearInterval(collectTimer);
+    collectTimer=setInterval(()=>{
+        collectCooldown--;
+        if(collectCooldown<=0){
+            clearInterval(collectTimer);
+            collectTimer=null;
+            if(btn){btn.disabled=false;btn.textContent='💰 收取资源';}
+            if(display)display.textContent='';
+        }else{
+            if(btn)btn.textContent=`冷却中 (${collectCooldown}s)`;
+            if(display)display.textContent=`冷却剩余: ${collectCooldown}s`;
+        }
+    },1000);
+}
+
+async function doBuild(){const r=await api('/colony/build',{method:'POST',body:JSON.stringify({building_type:build_type.value,slot:parseInt(build_slot.value)})});if(r){alert(r.msg);loadColony()}}
+async function upgradeBldg(slot){const r=await api('/colony/upgrade_building?slot='+slot,{method:'POST'});if(r){alert(r.msg);loadColony()}}
+async function researchTech(type){const r=await api('/colony/research_tech',{method:'POST',body:JSON.stringify({tech_type:type})});if(r){alert(r.msg);loadColony()}}
+async function levelUpColony(){const r=await api('/colony/level_up',{method:'POST'});if(r){alert(r.msg);loadColony()}}
+async function doPhilosophy(t){const r=await api('/philosophy/research',{method:'POST',body:JSON.stringify({philosophy_type:t})});if(r){alert(r.msg);loadColony()}}
+function showSpecPanel(){
+    const html=`<div class="card"><h3>🔄 选择专精</h3><div class="grid2">
+    ${Object.entries(SPEC_NAMES).filter(([k])=>k!=='none').map(([k,v])=>`<div><button class="btn btn-sm ${k===colony?.specialization?'btn-green':'btn-primary'}" onclick="setSpec('${k}')">${v}</button><br><small style="color:var(--muted)">${SPEC_BONUSES_DESC[k]||''}</small></div>`).join('')}
+    </div></div>`;
+    document.getElementById('panel-colony').innerHTML+=html;
+}
+const SPEC_BONUSES_DESC={military:'攻击+25% 防御+25% 产出-10%',economic:'金币+30% 产出+10%',cultural:'文化+30% 研究+10%',research:'研究+30% 产出+5%'};
+async function setSpec(t){const r=await api('/colony/specialize',{method:'POST',body:JSON.stringify({spec_type:t})});if(r){alert(r.msg);loadColony()}}
+
+// ============ Stocks ============
+let stockTab='list'; // list | ipo
+async function loadStocks(){
+    if(stockTab==='ipo'){
+        await loadIpoCalendar();
+        return;
+    }
+    const r=await api('/stocks/list');if(!r)return;
+    let h='';
+    // V7: 跨模块通知区域
+    if(stockNotifications.length>0){
+        h+=`<div class="stock-notification">📢 ${stockNotifications.join(' | ')}</div>`;
+    }
+    // V7: 每日事件影响
+    if(currentDailyEvent&&(currentDailyEvent.stock_effect||currentDailyEvent.effect_market)){
+        h+=`<div class="stock-notification">🎮 今日事件「${currentDailyEvent.title||currentDailyEvent.name||''}」影响: ${currentDailyEvent.stock_effect||currentDailyEvent.effect_market||''}</div>`;
+    }
+    h+=`<div class="card"><h3>📈 星际股票市场</h3>
+    <div class="tab-bar"><button class="tab-btn active" onclick="sortStocks('code',this)">代码</button><button class="tab-btn" onclick="sortStocks('change',this)">涨跌幅</button><button class="tab-btn" onclick="sortStocks('volume',this)">成交量</button><button class="tab-btn" onclick="stockTab='ipo';loadStocks()">新股日历</button></div>
+    <div style="overflow-x:auto"><table><tr><th>代码</th><th>名称</th><th>现价</th><th>涨跌幅</th><th>成交量</th><th>行业</th></tr>`;
+    r.stocks.forEach(s=>{
+        const cls=s.change_pct>0?'up':s.change_pct<0?'down':'flat';
+        // V7: 涨停/跌停徽章
+        let badge='';
+        if(s.change_pct>=9.9){
+            badge='<span class="limit-badge limit-up">涨停</span>';
+        }else if(s.change_pct<=-9.9){
+            badge='<span class="limit-badge limit-down">跌停</span>';
+        }
+        h+=`<tr class="stock-row" onclick="showStockDetail('${s.code}')"><td>${s.code}</td><td>${s.name}${badge}</td><td>${s.current_price.toFixed(2)}</td><td class="${cls}">${s.change_pct>0?'+':''}${s.change_pct.toFixed(2)}%</td><td>${s.volume}</td><td>${s.sector}</td></tr>`;
+    });
+    h+=`</table></div></div>`;
+    h+=`<div class="card"><h3>💼 我的持仓</h3><div id="portfolio-area">加载中...</div></div>`;
+    document.getElementById('panel-stocks').innerHTML=h;
+    loadPortfolio();
+}
+
+async function loadIpoCalendar(){
+    stockTab='ipo';
+    let ipos=[],delistings=[];
+    try{
+        const r=await api('/stocks/ipo_calendar');
+        if(r){
+            ipos=r.ipos||r.ipo_list||[];
+            delistings=r.delistings||r.delisting_list||[];
+        }
+    }catch(e){}
+    let h=`<div class="card"><h3>📅 新股日历</h3>
+    <div class="tab-bar"><button class="tab-btn" onclick="stockTab='list';loadStocks()">返回股票列表</button></div>`;
+    h+=`<div class="card"><h3>🆕 新股上市</h3>`;
+    if(ipos.length===0){
+        h+=`<p style="color:var(--muted);font-size:12px">暂无新股上市信息</p>`;
+    }else{
+        ipos.forEach(ipo=>{
+            h+=`<div class="ipo-row"><div><b>${ipo.name||ipo.code}</b> <small style="color:var(--muted)">${ipo.code||''}</small></div><div style="color:var(--accent)">${ipo.sector||''} | 发行价: ${ipo.ipo_price||ipo.price||'-'}</div></div>`;
+        });
+    }
+    h+=`</div>`;
+    h+=`<div class="card"><h3>📉 退市公告</h3>`;
+    if(delistings.length===0){
+        h+=`<p style="color:var(--muted);font-size:12px">暂无退市信息</p>`;
+    }else{
+        delistings.forEach(d=>{
+            h+=`<div class="ipo-row"><div><b>${d.name||d.code}</b> <small style="color:var(--muted)">${d.code||''}</small></div><div style="color:var(--red)">${d.reason||'退市'}</div></div>`;
+        });
+    }
+    h+=`</div></div>`;
+    document.getElementById('panel-stocks').innerHTML=h;
+}
+
+async function sortStocks(s,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const r=await api('/stocks/list?sort='+s);if(!r)return;const el=document.getElementById('panel-stocks');if(!el)return;let h='';if(stockNotifications.length>0){h+=`<div class="stock-notification">📢 ${stockNotifications.join(' | ')}</div>`;}if(currentDailyEvent&&(currentDailyEvent.stock_effect||currentDailyEvent.effect_market)){h+=`<div class="stock-notification">🎮 今日事件「${currentDailyEvent.title||currentDailyEvent.name||''}」影响: ${currentDailyEvent.stock_effect||currentDailyEvent.effect_market||''}</div>`;}h+=`<div class="card"><h3>📈 星际股票市场</h3><div class="tab-bar"><button class="tab-btn ${s==='code'?'active':''}" onclick="sortStocks('code',this)">代码</button><button class="tab-btn ${s==='change'?'active':''}" onclick="sortStocks('change',this)">涨跌幅</button><button class="tab-btn ${s==='volume'?'active':''}" onclick="sortStocks('volume',this)">成交量</button><button class="tab-btn" onclick="stockTab='ipo';loadStocks()">新股日历</button></div><div style="overflow-x:auto"><table><tr><th>代码</th><th>名称</th><th>现价</th><th>涨跌幅</th><th>成交量</th><th>行业</th></tr>`;r.stocks.forEach(s2=>{const cls=s2.change_pct>0?'up':s2.change_pct<0?'down':'flat';let badge='';if(s2.change_pct>=9.9)badge='<span class="limit-badge limit-up">涨停</span>';else if(s2.change_pct<=-9.9)badge='<span class="limit-badge limit-down">跌停</span>';h+=`<tr class="stock-row" onclick="showStockDetail('${s2.code}')"><td>${s2.code}</td><td>${s2.name}${badge}</td><td>${s2.current_price.toFixed(2)}</td><td class="${cls}">${s2.change_pct>0?'+':''}${s2.change_pct.toFixed(2)}%</td><td>${s2.volume}</td><td>${s2.sector}</td></tr>`;});h+=`</table></div></div><div class="card"><h3>💼 我的持仓</h3><div id="portfolio-area">加载中...</div></div>`;el.innerHTML=h;loadPortfolio()}
+async function showStockDetail(code){
+    const r=await api('/stocks/detail/'+code);if(!r)return;
+    const s=r.stock,cls=s.change_pct>0?'up':s.change_pct<0?'down':'flat';
+    // V7: 涨停/跌停判断
+    const isLimitUp=s.change_pct>=9.9;
+    const isLimitDown=s.change_pct<=-9.9;
+    let limitBadge='';
+    if(isLimitUp)limitBadge='<span class="limit-badge limit-up" style="font-size:14px">涨停</span>';
+    else if(isLimitDown)limitBadge='<span class="limit-badge limit-down" style="font-size:14px">跌停</span>';
+    let h=`<div class="card"><h3>${s.name} (${s.code}) ${limitBadge}</h3>
+    <p style="font-size:22px;font-weight:bold" class="${cls}">${s.current_price.toFixed(2)} ${s.change_pct>0?'↑':'↓'}${Math.abs(s.change_pct).toFixed(2)}%</p>
+    <p style="font-size:12px">开:${Number(s.open_price).toFixed(2)} 高:${Number(s.high_price).toFixed(2)} 低:${Number(s.low_price).toFixed(2)} 昨收:${Number(s.prev_close).toFixed(2)}</p>
+    <p style="font-size:12px">成交量:${s.volume} | 行业:${s.sector} | 市值:${s.market_cap}</p>`;
+    if(r.my_position)h+=`<p style="color:var(--accent);font-size:13px">我的持仓: ${r.my_position.amount}股 | 成本:${Number(r.my_position.avg_cost).toFixed(2)} | 盈亏:${Number(r.my_position.profit_pct).toFixed(1)}%</p>`;
+    h+=`<div style="margin-top:8px">
+    <div class="flex-gap"><button class="btn btn-danger btn-sm" onclick="stockTrade('${code}','buy')" ${isLimitUp?'disabled title="该股已涨停，无法买入"':''}>买入${isLimitUp?' (涨停)':''}</button><button class="btn btn-green btn-sm" onclick="stockTrade('${code}','sell')" ${isLimitDown?'disabled title="该股已跌停，无法卖出"':''}>卖出${isLimitDown?' (跌停)':''}</button>
+    <button class="btn btn-sm btn-accent2" onclick="stockWatch('${code}','add')">⭐自选</button></div>
+    <div class="flex-gap" style="margin-top:4px">
+    <input id="st-amount" type="number" placeholder="数量" value="100" style="width:80px;display:inline">
+    <button class="btn btn-sm btn-primary" onclick="stockPreview('${code}')">预览</button>
+    <div class="flex-gap"><button class="btn btn-sm" style="background:#333;color:var(--text)" onclick="document.getElementById('st-amount').value='10'">10</button><button class="btn btn-sm" style="background:#333;color:var(--text)" onclick="document.getElementById('st-amount').value='50'">50</button><button class="btn btn-sm" style="background:#333;color:var(--text)" onclick="document.getElementById('st-amount').value='100'">100</button></div>
+    </div>
+    <div id="st-preview"></div></div></div>`;
+    h+=`<div class="card"><h3>📊 K线图</h3><canvas id="kline-canvas"></canvas></div>`;
+    h+=`<div class="card"><h3>📋 最近成交</h3><div style="overflow-x:auto"><table><tr><th>方向</th><th>价格</th><th>数量</th><th>时间</th></tr>`;
+    (r.recent_trades||[]).slice(0,10).forEach(t=>{h+=`<tr><td class="${t.direction==='buy'?'up':'down'}">${t.direction==='buy'?'买入':'卖出'}</td><td>${Number(t.price).toFixed(2)}</td><td>${t.amount}</td><td>${new Date(t.created_at).toLocaleTimeString()}</td></tr>`});
+    h+=`</table></div></div>`;
+    h+=`<button class="btn btn-sm" style="background:#333;color:var(--text);margin-top:6px" onclick="loadStocks()">返回股票列表</button>`;
+    document.getElementById('panel-stocks').innerHTML=h;
+    drawKline(r.klines||[]);
+}
+async function stockTrade(code,dir){
+    // V7: 涨停/跌停限制检查
+    const detailR=await api('/stocks/detail/'+code);
+    if(detailR&&detailR.stock){
+        if(dir==='buy'&&detailR.stock.change_pct>=9.9){
+            showToast('该股已涨停，无法买入');
+            return;
+        }
+        if(dir==='sell'&&detailR.stock.change_pct<=-9.9){
+            showToast('该股已跌停，无法卖出');
+            return;
+        }
+    }
+    const amt=parseInt(document.getElementById('st-amount')?.value||100);
+    try{
+        const r=await api('/stocks/trade',{method:'POST',body:JSON.stringify({code,direction:dir,amount:amt})});
+        if(r){alert(r.msg);showStockDetail(code)}
+    }catch(e){
+        if(e.message&&e.message.includes('涨停')){showToast('该股已涨停，无法买入');}
+        else if(e.message&&e.message.includes('跌停')){showToast('该股已跌停，无法卖出');}
+        else{alert(e.message||'交易失败');}
+    }
+}
+async function stockPreview(code){const amt=parseInt(document.getElementById('st-amount')?.value||100);const r=await api(`/stocks/trade_preview?code=${code}&direction=buy&amount=${amt}`);if(r){document.getElementById('st-preview').innerHTML=`<small>总价:${r.total.toFixed(2)} 手续费:${r.commission.toFixed(2)} ${r.can_afford?'✅余额充足':'❌余额不足'} (余额:${r.gold.toFixed(0)} 最大:${r.max_buy}股)</small>`}}
+async function stockWatch(code,action){const r=await api('/stocks/watchlist',{method:'POST',body:JSON.stringify({code,action})});if(r)alert(r.msg)}
+async function loadPortfolio(){const r=await api('/stocks/portfolio');if(!r)return;document.getElementById('portfolio-area').innerHTML=r.positions.length?`<div style="overflow-x:auto"><table><tr><th>股票</th><th>数量</th><th>成本</th><th>盈亏%</th></tr>${r.positions.map(p=>`<tr><td>${p.name}</td><td>${p.amount}</td><td>${Number(p.avg_cost).toFixed(2)}</td><td class="${(p.profit_pct||0)>0?'up':'down'}">${(p.profit_pct||0).toFixed(1)}%</td></tr>`).join('')}</table></div>`:'暂无持仓'}
+function drawKline(klines){const c=document.getElementById('kline-canvas');if(!c||!klines.length)return;const ctx=c.getContext('2d');c.width=c.offsetWidth;c.height=c.offsetHeight;const w=c.width,kh=c.height,prices=klines.map(k=>[Number(k.open_price),Number(k.high_price),Number(k.low_price),Number(k.close_price)]),hi=Math.max(...prices.flat()),lo=Math.min(...prices.flat()),rng=hi-lo||1,bw=Math.max(2,w/klines.length-1);ctx.clearRect(0,0,w,kh);klines.forEach((k,i)=>{const x=i*(bw+1),o=kh-(prices[i][0]-lo)/rng*(kh-20)-10,cl=kh-(prices[i][3]-lo)/rng*(kh-20)-10,h=kh-(prices[i][1]-lo)/rng*(kh-20)-10,l=kh-(prices[i][2]-lo)/rng*(kh-20)-10,up=prices[i][3]>=prices[i][0];ctx.strokeStyle=up?'#ef4444':'#22c55e';ctx.fillStyle=up?'rgba(239,68,68,.3)':'rgba(34,197,94,.3)';ctx.fillRect(x,Math.min(o,cl),bw,Math.abs(cl-o)||1);ctx.beginPath();ctx.moveTo(x+bw/2,h);ctx.lineTo(x+bw/2,l);ctx.stroke()})}
+
+// V7: 股票通知系统（被论坛等模块调用）
+function addStockNotification(msg){
+    stockNotifications.unshift(msg);
+    if(stockNotifications.length>5)stockNotifications.pop();
+    // 如果当前在股票面板，刷新显示
+    if(document.getElementById('panel-stocks')?.classList.contains('active')){
+        loadStocks();
+    }
+}
+
+// ============ Market ============
+async function loadMarket(){
+    const r=await api('/market/prices');if(!r)return;
+    let h=`<div class="card"><h3>💰 资源市场</h3><div style="overflow-x:auto"><table><tr><th>资源</th><th>价格</th><th>趋势</th><th>操作</th></tr>`;
+    r.prices.forEach(p=>{
+        const dn=RES_NAMES[p.resource_type]||p.resource_type;
+        const trend=p.trend==='up'?'📈':p.trend==='down'?'📉':'➡️';
+        h+=`<tr><td>${dn}</td><td>${p.current_price}</td><td>${trend}</td><td>
+        <button class="btn btn-sm btn-danger" onclick="marketTrade('${p.resource_type}','buy')">买入</button>
+        <button class="btn btn-sm btn-green" onclick="marketTrade('${p.resource_type}','sell')">卖出</button></td></tr>`;
+    });
+    h+=`</table></div></div>`;
+    document.getElementById('panel-market').innerHTML=h;
+}
+async function marketTrade(rt,tt){const amt=prompt('数量:','10');if(!amt)return;const r=await api('/market/trade',{method:'POST',body:JSON.stringify({resource_type:rt,amount:parseInt(amt),trade_type:tt})});if(r){alert(r.msg);loadMarket();loadColony()}}
+
+// ============ Futures ============
+async function loadFuturesPanel(){
+    const r=await api('/market/prices');if(!r)return;
+    let h=`<div class="card"><h3>📊 期货开仓</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">杠杆交易资源期货，收益和风险均放大</p>`;
+    h+=`<div style="overflow-x:auto"><table><tr><th>资源</th><th>现价</th><th>趋势</th><th>操作</th></tr>`;
+    r.prices.forEach(p=>{
+        const dn=RES_NAMES[p.resource_type]||p.resource_type;
+        const trend=p.trend==='up'?'📈':p.trend==='down'?'📉':'➡️';
+        h+=`<tr><td>${dn}</td><td>${p.current_price}</td><td>${trend}</td><td>
+        <button class="btn btn-sm btn-danger" onclick="openFuture('${p.resource_type}','long')">做多</button>
+        <button class="btn btn-sm btn-green" onclick="openFuture('${p.resource_type}','short')">做空</button></td></tr>`;
+    });
+    h+=`</table></div></div>`;
+    h+=`<div class="card"><h3>📋 当前持仓</h3><div id="futures-positions"></div></div>`;
+    document.getElementById('panel-futures').innerHTML=h;
+    loadFuturesPositions();
+}
+async function openFuture(rt,dir){
+    const amt=prompt('数量:','10');if(!amt)return;
+    const lev=prompt('杠杆倍数(2-10):','2');if(!lev)return;
+    const r=await api('/futures/open',{method:'POST',body:JSON.stringify({resource_type:rt,direction:dir,amount:parseInt(amt),leverage:parseInt(lev)})});
+    if(r){showToast(r.msg||'开仓成功');loadFuturesPanel();loadColony()}
+}
+async function loadFuturesPositions(){const r=await api('/futures/positions');if(!r)return;document.getElementById('futures-positions').innerHTML=r.positions.length?`<div style="overflow-x:auto"><table><tr><th>资源</th><th>方向</th><th>数量</th><th>杠杆</th><th>入场价</th><th>现价</th><th>盈亏</th><th>操作</th></tr>${r.positions.map(p=>`<tr><td>${p.display_name}</td><td class="${p.direction==='long'?'up':'down'}">${p.direction==='long'?'做多':'做空'}</td><td>${p.amount}</td><td>${p.leverage}x</td><td>${p.entry_price}</td><td>${p.current_price}</td><td class="${p.unrealized_pnl>0?'up':'down'}">${p.unrealized_pnl>0?'+':''}${p.unrealized_pnl}</td><td><button class="btn btn-sm btn-danger" onclick="closeFuture(${p.id})">平仓</button></td></tr>`).join('')}</table></div>`:'<p style="color:var(--muted);font-size:12px">暂无持仓</p>'}
+async function closeFuture(id){const r=await api('/futures/close/'+id,{method:'POST'});if(r){showToast(r.msg||'平仓成功');loadFuturesPanel()}}
+
+// ============ Territories ============
+async function loadTerritories(){
+    const r=await api('/territories');if(!r)return;
+    let h=`<div class="card"><h3>🗺️ 星际领地</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">占领领地可每30分钟自动产出资源</p>`;
+    r.territories.forEach(t=>{
+        const isMine=t.is_mine,ownerCls=t.owner_name?(isMine?'mine-tag':'owned'):'free';
+        const ownerText=t.owner_name?(isMine?`👑 ${t.owner_name}（我）`:`👑 ${t.owner_name}`):'无主';
+        // V7: 领地收取冷却
+        const terrCooldown=terrCollectCooldowns[t.id]||0;
+        const collectBtnId=`terr-collect-${t.id}`;
+        const cooldownId=`terr-cooldown-${t.id}`;
+        h+=`<div class="territory-card ${isMine?'mine':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+        <div><b>${t.name}</b> <span class="owner-tag ${ownerCls}">${ownerText}</span></div>
+        <div><small>⛏️+${t.bonus_minerals} ⚡+${t.bonus_energy} 🌾+${t.bonus_food}</small></div></div>
+        <div style="margin-top:4px">${t.owner_colony&&!isMine?`<button class="btn btn-sm btn-danger" onclick="captureTerr(${t.id})">⚔️ 夺取</button>`:''}
+        ${isMine?`<button class="btn btn-sm btn-primary" id="${collectBtnId}" onclick="doTerrCollect(${t.id})">📦 收取</button>`:''}</div>
+        ${isMine?`<div id="${cooldownId}" class="cooldown-timer" style="margin-top:2px"></div>`:''}</div>`;
+    });
+    h+=`</div>`;
+    document.getElementById('panel-territories').innerHTML=h;
+}
+
+async function doTerrCollect(id){
+    try{
+        const r=await api('/territories/'+id+'/collect',{method:'POST'});
+        if(r){
+            showToast(r.msg||'收取成功');
+            startTerrCollectCooldown(id,60);
+            loadColony();
+        }
+    }catch(e){
+        if(e.message&&e.message.includes('冷却中')){
+            const match=e.message.match(/(\d+)秒/);
+            if(match)startTerrCollectCooldown(id,parseInt(match[1]));
+            else startTerrCollectCooldown(id,60);
+            showToast(e.message);
+        }else{
+            alert(e.message||'收取失败');
+        }
+    }
+}
+
+function startTerrCollectCooldown(terrId,seconds){
+    terrCollectCooldowns[terrId]=seconds;
+    const btn=document.getElementById(`terr-collect-${terrId}`);
+    const display=document.getElementById(`terr-cooldown-${terrId}`);
+    if(btn){
+        btn.disabled=true;
+        btn.textContent=`冷却中 (${seconds}s)`;
+    }
+    if(display)display.textContent=`冷却剩余: ${seconds}s`;
+    if(terrCollectTimers[terrId])clearInterval(terrCollectTimers[terrId]);
+    terrCollectTimers[terrId]=setInterval(()=>{
+        terrCollectCooldowns[terrId]--;
+        if(terrCollectCooldowns[terrId]<=0){
+            clearInterval(terrCollectTimers[terrId]);
+            delete terrCollectTimers[terrId];
+            terrCollectCooldowns[terrId]=0;
+            if(btn){btn.disabled=false;btn.textContent='📦 收取';}
+            if(display)display.textContent='';
+        }else{
+            if(btn)btn.textContent=`冷却中 (${terrCollectCooldowns[terrId]}s)`;
+            if(display)display.textContent=`冷却剩余: ${terrCollectCooldowns[terrId]}s`;
+        }
+    },1000);
+}
+
+async function captureTerr(id){const r=await api('/territories/'+id+'/capture',{method:'POST'});if(r){alert(r.msg);loadTerritories()}}
+
+// ============ Factions ============
+async function loadFactions(){
+    const r=await api('/factions');if(!r)return;
+    let h=`<div class="card"><h3>🏛️ 派系</h3>`;
+    r.factions.forEach(f=>{
+        h+=`<div class="card" style="border-color:var(--accent2)"><h3>${f.name}</h3>
+        <p style="font-size:12px">格言: ${f.motto||'无'} | 理念: ${f.ideology} | 成员: ${f.member_count} | 积分: ${f.total_score}</p>
+        <p style="font-size:12px">成员: ${(f.members||[]).map(m=>m.name+'('+m.role+')').join(', ')||'无'}</p>
+        <button class="btn btn-sm btn-accent2" onclick="joinFaction(${f.id})">加入</button></div>`;
+    });
+    h+=`<div style="margin-top:6px"><button class="btn btn-primary" onclick="createFactionDialog()">创建派系</button></div></div>`;
+    const my=await api('/factions/my');
+    if(my&&my.faction){
+        h+=`<div class="card"><h3>我的派系: ${my.faction.name}</h3><p style="font-size:12px">角色: ${my.role}</p>
+        <p style="font-size:12px">任务: ${(my.missions||[]).map(m=>`${m.title} (${m.progress}/${m.target_value}${m.is_completed?' ✅':''})`).join(', ')||'无'}</p>
+        <p style="font-size:12px">资源池: ${Object.entries(my.resource_pool||{}).map(([k,v])=>`${RES_NAMES[k]||k}:${v}`).join(', ')||'空'}</p>
+        <button class="btn btn-sm btn-danger" onclick="leaveFaction()">退出派系</button></div>`;
+    }
+    document.getElementById('panel-factions').innerHTML=h;
+}
+async function joinFaction(id){const r=await api('/factions/'+id+'/join',{method:'POST'});if(r){alert(r.msg);loadFactions()}}
+async function leaveFaction(){if(!confirm('确定退出？'))return;const r=await api('/factions/leave',{method:'POST'});if(r){alert(r.msg);loadFactions()}}
+function createFactionDialog(){const name=prompt('派系名称:');if(!name)return;const motto=prompt('格言:');api('/factions/create',{method:'POST',body:JSON.stringify({name,motto:motto||''})}).then(r=>{if(r){alert(r.msg);loadFactions()}})}
+
+// ============ Expeditions ============
+async function loadExpeditions(){
+    const r=await api('/expeditions');if(!r)return;
+    const sectors=['仙女座α','猎户臂β','半人马γ','天琴座δ','银河核心','暗星云'];
+    let h=`<div class="card"><h3>🚀 星际探索</h3>
+    <select id="exp-sector">${sectors.map(s=>`<option>${s}</option>`).join('')}</select>
+    <input id="exp-fleet" type="number" value="1" min="1" max="10" placeholder="舰队" style="width:80px;display:inline">
+    <button class="btn btn-primary" onclick="launchExp()">出发探索</button></div>`;
+    h+=`<div class="card"><h3>探索记录</h3><div style="overflow-x:auto"><table><tr><th>目标</th><th>舰队</th><th>状态</th><th>发现</th><th>操作</th></tr>`;
+    (r.expeditions||[]).forEach(e=>{
+        h+=`<tr><td>${e.target_sector}</td><td>${e.fleet_size}</td><td>${e.status==='exploring'?'🔍探索中':e.status==='completed'?'✅完成':'?'}</td>
+        <td>${e.reward_discovery||'-'}</td><td>${e.status==='completed'?`<button class="btn btn-sm btn-gold" onclick="claimExp(${e.id})">领取</button>`:'-'}</td></tr>`;
+    });
+    h+=`</table></div></div>`;
+    document.getElementById('panel-expeditions').innerHTML=h;
+}
+async function launchExp(){const r=await api('/expeditions/launch',{method:'POST',body:JSON.stringify({target_sector:exp_sector.value,fleet_size:parseInt(exp_fleet.value)})});if(r){alert(r.msg);loadExpeditions()}}
+async function claimExp(id){const r=await api('/expeditions/'+id+'/claim',{method:'POST'});if(r){alert(r.msg);loadExpeditions()}}
+
+// ============ Forum ============
+let forumCat='general';
+async function loadForum(){
+    const r=await api('/forum/posts?category='+forumCat);if(!r)return;
+    const cats=[['general','综合'],['trade','交易'],['strategy','策略'],['social','社交'],['tech','科技']];
+    let h=`<div class="card"><h3>💬 星际论坛</h3>
+    <div class="tab-bar">${cats.map(([k,v])=>`<button class="tab-btn ${k===forumCat?'active':''}" onclick="forumCat='${k}';loadForum()">${v}</button>`).join('')}</div>
+    <div style="margin-bottom:6px"><input id="fp-title" placeholder="标题"><textarea id="fp-content" placeholder="内容"></textarea>
+    <button class="btn btn-primary" onclick="doPost()">发帖</button></div>`;
+    (r.posts||[]).forEach(p=>{
+        const npcTag=p.is_npc?'<span style="color:var(--accent2);font-size:10px">[NPC]</span>':'';
+        // V7: 检测论坛帖子是否影响市场
+        let marketTag='';
+        if(p.category==='trade'||(p.content&&p.content.includes('股票'))){
+            marketTag='<span style="color:var(--gold);font-size:10px">📈市场相关</span>';
+            // V7: 跨模块通知 - 论坛交易类帖子影响市场
+            if(p.is_npc&&p.category==='trade'){
+                addStockNotification(`论坛热帖: "${p.title}" 可能影响市场走势`);
+            }
+        }
+        h+=`<div class="card" style="padding:8px"><div><b>${p.title}</b> ${npcTag} ${marketTag} <small style="color:var(--muted)">by ${p.author_name} 👍${p.like_count} 💬${p.reply_count}</small></div>
+        <p style="font-size:12px;margin-top:3px">${p.content}</p>
+        <div class="flex-gap"><button class="btn btn-sm btn-gold" onclick="likePost(${p.id})">👍</button><button class="btn btn-sm btn-primary" onclick="showPost(${p.id})">查看回复</button></div>
+        <div id="post-${p.id}"></div></div>`;
+    });
+    h+=`</div>`;
+    document.getElementById('panel-forum').innerHTML=h;
+}
+async function doPost(){const r=await api('/forum/posts',{method:'POST',body:JSON.stringify({category:forumCat,title:fp_title.value,content:fp_content.value})});if(r){alert(r.msg);loadForum()}}
+async function likePost(id){const r=await api('/forum/posts/'+id+'/like',{method:'POST'});if(r)loadForum()}
+async function showPost(id){
+    const r=await api('/forum/posts/'+id);if(!r)return;
+    let h=`<div style="margin-top:4px">`;
+    (r.replies||[]).forEach(rp=>{h+=`<div style="padding:3px 6px;border-left:2px solid var(--border);margin:2px 0;font-size:12px">${rp.is_npc?'<span style="color:var(--accent2)">[NPC]</span> ':''}<b>${rp.author_name}</b>: ${rp.content} <small style="color:var(--muted)">${new Date(rp.created_at).toLocaleTimeString()}</small></div>`});
+    h+=`<div style="margin-top:3px"><input id="reply-${id}" placeholder="回复内容" style="width:70%;display:inline"><button class="btn btn-sm btn-primary" onclick="doReply(${id})">回复</button></div></div>`;
+    const el=document.getElementById('post-'+id);if(el)el.innerHTML=h;
+}
+async function doReply(id){const inp=document.getElementById('reply-'+id);const r=await api('/forum/posts/'+id+'/reply',{method:'POST',body:JSON.stringify({content:inp.value})});if(r){showPost(id)}}
+
+// ============ Chat Room ============
+async function initChat(){
+    let h=`<div id="chat-panel">
+    <div style="padding:8px;border-bottom:1px solid var(--border)"><h3>📡 星际聊天室</h3><p style="font-size:11px;color:var(--muted)">NPC也在这里聊天灌水</p></div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-bar">
+    <input id="chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')sendChat()">
+    <button class="btn btn-primary btn-sm" onclick="sendChat()">发送</button>
+    </div></div>`;
+    document.getElementById('panel-chat').innerHTML=h;
+    await loadChatHistory();
+    if(chatTimer)clearInterval(chatTimer);
+    chatTimer=setInterval(pollChat,3000);
+}
+async function loadChatHistory(){
+    const r=await api('/chat/history?limit=50');if(!r)return;
+    const el=document.getElementById('chat-messages');if(!el)return;
+    el.innerHTML='';
+    (r.messages||[]).forEach(m=>{chatLastId=Math.max(chatLastId,m.id);appendChatMsg(m)});
+    el.scrollTop=el.scrollHeight;
+}
+async function pollChat(){
+    const r=await api('/chat/history?limit=20');if(!r)return;
+    const el=document.getElementById('chat-messages');if(!el)return;
+    let newMsgs=false;
+    (r.messages||[]).forEach(m=>{if(m.id>chatLastId){chatLastId=m.id;appendChatMsg(m);newMsgs=true}});
+    if(newMsgs)el.scrollTop=el.scrollHeight;
+}
+function appendChatMsg(m){
+    const el=document.getElementById('chat-messages');if(!el)return;
+    const cls=m.is_npc?'npc':'user';
+    const npcTag=m.is_npc?'<span style="color:var(--accent2);font-size:9px">[NPC]</span> ':'';
+    const time=new Date(m.created_at).toLocaleTimeString();
+    el.innerHTML+=`<div class="chat-msg ${cls}"><div class="author">${npcTag}${m.author_name} <span class="time">${time}</span></div><div>${m.message}</div></div>`;
+}
+async function sendChat(){
+    const inp=document.getElementById('chat-input');if(!inp||!inp.value.trim())return;
+    const r=await api('/chat/send',{method:'POST',body:JSON.stringify({message:inp.value.trim()})});
+    if(r){inp.value='';chatLastId=r.id;const el=document.getElementById('chat-messages');
+    if(el){el.innerHTML+=`<div class="chat-msg user"><div class="author">${r.author_name} <span class="time">${new Date().toLocaleTimeString()}</span></div><div>${r.message}</div></div>`;el.scrollTop=el.scrollHeight}}
+}
+
+// ============ NPC ============
+async function loadNpc(){
+    const r=await api('/npc/list');if(!r)return;
+    let h=`<div class="card"><h3>🤖 NPC殖民者</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">每个NPC有独特人格，会自主交易、建造、发帖、聊天</p>`;
+    (r.npcs||[]).forEach(n=>{
+        const pi=n.personality_info||{};
+        const pClass=n.personality||'trader';
+        h+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+        <div><h3 style="margin:0;font-size:14px">${pi.emoji||'🤖'} ${n.colony_name}</h3>
+        <span class="npc-personality ${pClass}">${pi.name||n.personality} - ${pi.style||''}</span></div>
+        <div style="text-align:right;font-size:12px"><div>攻击:${n.attack_power} 防御:${n.defense_power}</div><div>积分:${n.score}</div></div></div>
+        <p style="font-size:11px;color:var(--muted);margin-top:3px">特征: ${(pi.traits||[]).join(' / ')}</p></div>`;
+    });
+    h+=`</div>`;
+    document.getElementById('panel-npc').innerHTML=h;
+}
+
+// ============ Leaderboard ============
+async function loadLeaderboard(){
+    const r=await api('/leaderboard');if(!r)return;
+    let h=`<div class="card"><h3>🏆 排行榜</h3><div style="overflow-x:auto"><table><tr><th>#</th><th>殖民地</th><th>积分</th><th>金币</th><th>攻击</th></tr>`;
+    (r.leaderboard||[]).forEach((c,i)=>{
+        h+=`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.score}</td><td>${c.gold}</td><td>${c.attack_power}</td></tr>`;
+    });
+    h+=`</table></div></div>`;
+    document.getElementById('panel-leaderboard').innerHTML=h;
+}
+
+// ============ Achievements ============
+async function loadAchievements(){
+    const r=await api('/achievements');if(!r)return;
+    let h=`<div class="card"><h3>🎖️ 成就</h3><div class="grid2">`;
+    (r.achievements||[]).forEach(a=>{
+        const unlocked=a.unlocked?'✅':'🔒';
+        h+=`<div class="card" style="padding:6px;${a.unlocked?'border-color:var(--gold)':''}">${unlocked} <b>${a.name}</b><br><small style="color:var(--muted)">${a.description}</small><br><small>奖励: ${a.reward_gold}金 ${a.reward_score}分</small></div>`;
+    });
+    h+=`</div></div>`;
+    document.getElementById('panel-achievements').innerHTML=h;
+}
+
+// ============ Daily Tasks ============
+async function loadDailyTasks(){
+    const r=await api('/daily_tasks');if(!r)return;
+    let h=`<div class="card"><h3>📋 每日任务</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">每日刷新，完成任务获得奖励</p>`;
+    if(!r.tasks||r.tasks.length===0){
+        h+=`<p style="color:var(--muted);font-size:12px">今日暂无任务</p>`;
+    }else{
+        h+=`<div style="overflow-x:auto"><table><tr><th>任务</th><th>描述</th><th>进度</th><th>奖励</th><th>操作</th></tr>`;
+        r.tasks.forEach(t=>{
+            const prog=t.progress||0;
+            const target=t.target_value||1;
+            const done=t.is_completed;
+            const pct=Math.min(100,Math.round(prog/target*100));
+            h+=`<tr><td><b>${t.title}</b></td><td>${t.description}</td>
+            <td><div class="progress-bar" style="width:80px;height:16px"><div class="fill" style="width:${pct}%;background:${done?'var(--green)':'var(--accent)'}"></div><div class="label" style="font-size:9px">${prog}/${target}</div></div></td>
+            <td>🪙${t.reward_gold} ⭐${t.reward_score}</td>
+            <td>${done?`<button class="btn btn-sm btn-gold" onclick="claimTask(${t.id})">领取</button>`:'进行中'}</td></tr>`;
+        });
+        h+=`</table></div>`;
+    }
+    h+=`</div>`;
+    document.getElementById('panel-tasks').innerHTML=h;
+}
+async function claimTask(id){const r=await api('/daily_tasks/'+id+'/claim',{method:'POST'});if(r){showToast(r.msg||'领取成功');loadDailyTasks();loadColony()}}
+
+// ============ Craft ============
+async function loadCraft(){
+    const r=await api('/colony/craft_recipes');if(!r)return;
+    let h=`<div class="card"><h3>⚗️ 资源合成</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">将基础资源合成为高级资源</p>`;
+    (r.recipes||[]).forEach(rc=>{
+        const inputs=Object.entries(rc.input_names||{}).map(([k,v])=>`${k}×${v}`).join(' + ');
+        h+=`<div class="card"><h3 style="font-size:14px">${rc.name} → ${rc.output_name}×${rc.output}</h3>
+        <p style="font-size:12px">需要: ${inputs}</p>
+        <div class="flex-gap"><input id="craft-amt-${rc.id}" type="number" value="1" min="1" style="width:60px">
+        <button class="btn btn-sm ${rc.can_craft?'btn-primary':'btn-danger'}" onclick="doCraft('${rc.id}')" ${rc.can_craft?'':'disabled'}>合成</button></div></div>`;
+    });
+    h+=`</div>`;
+    document.getElementById('panel-craft').innerHTML=h;
+}
+async function doCraft(id){const amtEl=document.getElementById('craft-amt-'+id);const r=await api('/colony/craft',{method:'POST',body:JSON.stringify({recipe_id:id,amount:parseInt(amtEl?.value||1)})});if(r){alert(r.msg);loadCraft();loadColony()}}
+
+// ============ God AI ============
+async function loadGod(){
+    const r=await api('/god/status');if(!r)return;
+    let h=`<div class="card"><h3>👁️ 上帝AI</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">上帝AI维护游戏世界：修复数据、操控股市、天气事件、平衡经济</p>`;
+    (r.god_logs||[]).forEach(l=>{
+        const icons={balance_economy:'⚖️',weather_event:'🌤️',fix_data:'🔧',market_intervention:'📊',stock_event:'📈',reward_active:'🎁'};
+        h+=`<div class="god-log">${icons[l.action_type]||'👁️'} <b>${l.action_type}</b>: ${l.description} <small style="color:var(--muted)">${new Date(l.created_at).toLocaleString()}</small></div>`;
+        // V7: 上帝AI市场干预事件通知
+        if(l.action_type==='stock_event'||l.action_type==='market_intervention'){
+            addStockNotification(`上帝AI: ${l.description}`);
+        }
+    });
+    h+=`</div>`;
+    document.getElementById('panel-god').innerHTML=h;
+}
+
+// ============ V8: 战争纪元 Loader函数 ============
+let warTab='raid', selectedFormation='balanced';
+
+async function loadWar(){
+    const fatigue=await api('/raid/fatigue');
+    const reports=await api('/reports/unread_count');
+    let h=`<div class="card"><h3>⚔️ 战争纪元</h3>
+        <div style="margin:4px 0;font-size:12px;color:var(--muted)">
+            ⏱️ 冷却: ${fatigue?.cooldown_remaining||0}秒 | 疲劳: ${fatigue?.fatigue_penalty||1}x | 🔄 复仇令牌: ${fatigue?.revenge_tokens||0} | 📬 未读战报: <span style="color:var(--red)">${reports?.unread_reports||0}</span>
+        </div>
+        <div class="tab-bar">
+            <span class="tab-btn ${warTab==='raid'?'active':''}" onclick="warTab='raid';loadWar()">🗡️ 袭击</span>
+            <span class="tab-btn ${warTab==='defense'?'active':''}" onclick="warTab='defense';loadWar()">🛡️ 防御</span>
+            <span class="tab-btn ${warTab==='reports'?'active':''}" onclick="warTab='reports';loadWar()">📰 战报</span>
+            <span class="tab-btn ${warTab==='factionwar'?'active':''}" onclick="warTab='factionwar';loadWar()">🏴 派系战</span>
+        </div></div>`;
+    if(warTab==='raid'){
+        h+=await loadRaidTab();
+    } else if(warTab==='defense'){
+        h+=await loadDefenseTab();
+    } else if(warTab==='reports'){
+        h+=await loadReportsTab();
+    } else if(warTab==='factionwar'){
+        h+=await loadFactionWarTab();
+    }
+    document.getElementById('panel-war').innerHTML=h;
+}
+
+async function loadRaidTab(){
+    const r=await api('/raid/targets');
+    if(!r)return '<div class="card">加载失败</div>';
+    let h=`<div class="card"><h3>🎯 选择目标</h3>
+        <div style="margin:6px 0">
+            <b>阵型:</b>
+            <span class="formation-btn ${selectedFormation==='balanced'?'selected':''}" onclick="selectedFormation='balanced';loadWar()">⚖️ 均衡</span>
+            <span class="formation-btn ${selectedFormation==='assault'?'selected':''}" onclick="selectedFormation='assault';loadWar()">⚡ 突击(+30%攻)</span>
+            <span class="formation-btn ${selectedFormation==='siege'?'selected':''}" onclick="selectedFormation='siege';loadWar()">🔥 攻城(+掠夺)</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">我的攻击力: ${r.my_power}</div>`;
+    (r.targets||[]).forEach(t=>{
+        const ratio=r.my_power/Math.max(1,t.defense_power);
+        const chance=ratio>1.5?'🟢高':ratio>0.8?'🟡中':'🔴低';
+        const shield=t.has_shield?'<span class="shield-badge">🛡️护盾</span>':'';
+        const bounty=t.bounty_amount>0?`<span style="color:var(--gold)">💀${t.bounty_amount}金</span>`:'';
+        h+=`<div class="raid-target ${t.bounty_amount>0?'has-bounty':''}" onclick="launchRaid(${t.id})">
+            <div><b>${t.name}</b> <small>Lv${t.level}</small> ${shield} ${bounty}</div>
+            <div style="font-size:12px">⚔️${t.attack_power} 🛡️${t.defense_power} ${chance}</div>
+        </div>`;
+    });
+    h+=`</div>`;
+    return h;
+}
+
+async function launchRaid(targetId){
+    if(!confirm('确认发起袭击?'))return;
+    const r=await api('/raid/launch','POST',{target_id:targetId,formation:selectedFormation});
+    if(!r)return;
+    if(r.result==='blocked'||r.result==='shielded'){
+        toast(r.msg||'无法袭击');return;
+    }
+    let msg=r.result==='win'?`⚔️ 袭击成功! 掠夺${r.loot_pct}%资源`:'💀 袭击失败';
+    if(r.loot&&Object.keys(r.loot).length>0){
+        msg+=' | '+Object.entries(r.loot).map(([k,v])=>`${k}:${v}`).join(' ');
+    }
+    toast(msg);
+    loadWar();
+}
+
+async function loadDefenseTab(){
+    const r=await api('/defenses');
+    if(!r)return '<div class="card">加载失败</div>';
+    let h=`<div class="card"><h3>🛡️ 防御工事</h3>
+        <div style="margin:6px 0"><b>防御阵型:</b> `;
+    Object.entries(r.defense_formations||{}).forEach(([k,v])=>{
+        h+=`<span class="formation-btn ${r.formation===k?'selected':''}" onclick="setDefFormation('${k}')">${v.name}</span> `;
+    });
+    h+=`</div>`;
+    if(r.shield&&r.shield.shield_type!=='none'){
+        h+=`<div style="margin:4px 0"><span class="shield-badge">🛡️ 护盾生效中 (剩余${r.shield.shield_charges}次)</span></div>`;
+    } else {
+        h+=`<div style="margin:4px 0"><button class="btn btn-primary btn-sm" onclick="activateShield()">激活护盾(100暗物质/8h)</button></div>`;
+    }
+    h+=`<div class="grid2" style="margin-top:6px">`;
+    for(let i=0;i<5;i++){
+        const d=(r.defenses||[]).find(x=>x.slot===i);
+        if(d){
+            const cfg=(r.defense_types||{})[d.defense_type]||{};
+            h+=`<div class="defense-slot occupied"><b>${cfg.name||d.defense_type}</b> Lv${d.level}<br>
+                <small>HP:${d.hp}/${d.max_hp} 防+${d.level*cfg.def}</small><br>
+                <button class="btn btn-sm btn-primary" onclick="upgradeDefense(${d.id})">升级</button>
+                ${d.hp<d.max_hp?`<button class="btn btn-sm btn-gold" onclick="repairDefense(${d.id})">修复</button>`:''}
+            </div>`;
+        } else {
+            h+=`<div class="defense-slot"><small>空槽位 #${i}</small><br><select id="def-type-${i}" style="font-size:10px">
+                <option value="trap">陷阱阵(30矿20能)</option>
+                <option value="laser_turret">激光炮塔(60矿40能)</option>
+                <option value="missile_silo">导弹井(80矿50能)</option>
+                <option value="shield_gen">护盾发生器(100矿80能)</option>
+                <option value="autocannon">自动炮台(50矿30能)</option>
+            </select><br><button class="btn btn-sm btn-accent2" onclick="buildDefense(${i})">建造</button></div>`;
+        }
+    }
+    h+=`</div></div>`;
+    return h;
+}
+
+async function setDefFormation(f){
+    await api('/defenses/formation','POST',{formation:f});
+    toast(`防御阵型已切换`);loadWar();
+}
+async function activateShield(){
+    await api('/raid/shield/activate','POST',{shield_type:'attack'});
+    toast('护盾已激活!');loadWar();
+}
+async function buildDefense(slot){
+    const sel=document.getElementById('def-type-'+slot);
+    const type=sel?sel.value:'trap';
+    await api('/defenses/build','POST',{defense_type:type,slot});
+    toast('防御工事建造成功!');loadWar();
+}
+async function upgradeDefense(id){
+    await api('/defenses/upgrade/'+id,'POST',{});toast('升级成功!');loadWar();
+}
+async function repairDefense(id){
+    await api('/defenses/repair/'+id,'POST',{});toast('修复完成!');loadWar();
+}
+
+async function loadReportsTab(){
+    const r=await api('/reports');
+    if(!r)return '<div class="card">加载失败</div>';
+    let h=`<div class="card"><h3>📰 战报</h3>`;
+    (r.reports||[]).forEach(rp=>{
+        const isWin=rp.result==='win';
+        h+=`<div class="battle-report ${isWin?'victory':''} ${rp.is_read?'':'unread'}" onclick="viewReport(${rp.id})">
+            <span style="color:${isWin?'var(--green)':'var(--red)'}">${isWin?'✅胜':'❌败'}</span>
+            ${rp.report_type==='revenge'?'🔄复仇':''} ${rp.attacker_name} vs ${rp.defender_name}
+            <small style="color:var(--muted)">${new Date(rp.created_at).toLocaleString()}</small>
+        </div>`;
+    });
+    h+=`</div>`;
+    return h;
+}
+
+async function viewReport(id){
+    const rp=await api('/reports/'+id);
+    if(!rp)return;
+    let phases='';
+    try{
+        const ps=typeof rp.battle_phases_json==='string'?JSON.parse(rp.battle_phases_json):rp.battle_phases_json;
+        (ps||[]).forEach(p=>{
+            const cls=p.phase==='loot'||p.phase==='defend'?(rp.result==='win'?'win':'lose'):'shield';
+            phases+=`<div class="phase-step ${cls}">${p.desc}</div>`;
+        });
+    }catch(e){}
+    let lootStr='';
+    try{
+        const loot=typeof rp.loot_json==='string'?JSON.parse(rp.loot_json):rp.loot_json;
+        if(loot&&Object.keys(loot).length>0) lootStr=Object.entries(loot).map(([k,v])=>`${k}:${v}`).join(' ');
+    }catch(e){}
+    let h=`<div class="card"><h3>📋 战报详情</h3>
+        <p>⚔️ ${rp.attacker_name} (${rp.attacker_formation||'均衡'}) vs 🛡️ ${rp.defender_name} (${rp.defender_formation||'堡垒'})</p>
+        <p>攻${rp.attacker_power} vs 守${rp.defender_power} → <span style="color:${rp.result==='win'?'var(--green)':'var(--red)'}">${rp.result==='win'?'胜利':'失败'}</span></p>
+        ${phases?`<div class="phase-timeline">${phases}</div>`:''}
+        ${lootStr?`<p style="color:var(--gold)">掠夺: ${lootStr}</p>`:''}
+        <button class="btn btn-sm btn-danger" onclick="loadWar()">← 返回</button></div>`;
+    document.getElementById('panel-war').innerHTML=h;
+}
+
+async function loadFactionWarTab(){
+    const wars=await api('/wars/active');
+    let h=`<div class="card"><h3>🏴 派系战争</h3>`;
+    if(!wars||!wars.wars||wars.wars.length===0){
+        h+=`<p style="color:var(--muted)">当前没有活跃的派系战争</p>`;
+    }
+    (wars?.wars||[]).forEach(w=>{
+        const total=w.attacker_score+w.defender_score||1;
+        const aPct=Math.round(w.attacker_score/total*100);
+        h+=`<div style="margin:6px 0">
+            <div><b>${w.attacker_name}</b> vs <b>${w.defender_name}</b></div>
+            <div class="war-score-bar">
+                <div class="atk-score" style="width:${aPct}%">${w.attacker_score}</div>
+                <div class="def-score" style="width:${100-aPct}%">${w.defender_score}</div>
+            </div>
+            <small style="color:var(--muted)">${w.war_type} | ${new Date(w.started_at).toLocaleDateString()}</small>
+        </div>`;
+    });
+    h+=`</div>`;
+    return h;
+}
+
+// ============ V8: 竞技场 ============
+async function loadArena(){
+    const tournaments=await api('/arena/tournaments');
+    const rankings=await api('/arena/rankings');
+    let h=`<div class="card"><h3>🏟️ 竞技场</h3>`;
+    if(tournaments?.tournaments){
+        h+=`<div style="margin:6px 0"><b>当前赛事</b></div>`;
+        tournaments.tournaments.forEach(t=>{
+            h+=`<div style="padding:6px;border:1px solid var(--border);border-radius:6px;margin:3px 0">
+                <b>${t.name}</b> <small>${t.tournament_type==='daily'?'每日赛':'每周赛'}</small><br>
+                <small>报名费:${t.entry_fee}金 | 奖金:${t.prize_pool}金 | 状态:${t.status}</small><br>
+                <button class="btn btn-sm btn-primary" onclick="registerArena(${t.id})">报名</button>
+            </div>`;
+        });
+    }
+    h+=`</div><div class="card"><h3>🏆 排名</h3>`;
+    (rankings?.rankings||[]).forEach((r,i)=>{
+        h+=`<div class="arena-rank"><span class="rank-num">${i+1}</span>
+            <span>${r.name}</span>
+            <span style="color:var(--gold)">${r.arena_rating||1000}</span>
+            <span style="color:var(--accent);font-size:11px">${r.title||'新兵'}</span></div>`;
+    });
+    h+=`</div>`;
+    document.getElementById('panel-arena').innerHTML=h;
+}
+async function registerArena(tid){
+    await api('/arena/register/'+tid,'POST',{});toast('报名成功!');loadArena();
+}
+
+// ============ V8: 赏金 ============
+async function loadBounty(){
+    const board=await api('/bounty/board');
+    const my=await api('/bounty/my');
+    let h=`<div class="card"><h3>🗡️ 赏金榜</h3>
+        <button class="btn btn-sm btn-gold" onclick="showPlaceBounty()" style="margin-bottom:6px">发布悬赏</button>`;
+    (board?.bounties||[]).forEach(b=>{
+        h+=`<div style="padding:6px;border:1px solid var(--border);border-radius:6px;margin:3px 0;display:flex;justify-content:space-between;align-items:center">
+            <div><b>💀 ${b.target_name}</b> <small>by ${b.placer_name}</small></div>
+            <div><span class="bounty-amount">${b.amount}金</span>
+            ${b.escalation>0?`<small style="color:var(--red)">(+${b.escalation}次追加)</small>`:''}</div>
+        </div>`;
+    });
+    h+=`</div>`;
+    if(my){
+        h+=`<div class="card"><h3>📋 我的悬赏</h3>`;
+        if(my.on_me&&my.on_me.length>0){
+            h+=`<div style="color:var(--red);font-size:12px;margin-bottom:4px">悬赏在我头上:</div>`;
+            my.on_me.forEach(b=>{h+=`<div>💀 ${b.placer_name}: <span class="bounty-amount">${b.amount}金</span></div>`;});
+        }
+        h+=`</div>`;
+    }
+    document.getElementById('panel-bounty').innerHTML=h;
+}
+async function showPlaceBounty(){
+    const tid=prompt('目标殖民地ID:');
+    const amt=prompt('悬赏金额(最低500):');
+    if(!tid||!amt)return;
+    await api('/bounty/place','POST',{target_id:parseInt(tid),amount:parseInt(amt)});
+    toast('悬赏发布成功!');loadBounty();
+}
+
+// ============ V8: 间谍 ============
+async function loadSpy(){
+    const hist=await api('/espionage/history');
+    let h=`<div class="card"><h3>🕵️ 间谍行动</h3>
+        <div style="margin:6px 0;font-size:12px">间谍防御等级: ${hist?.my_spy_defense||0}/100</div>
+        <div style="margin-bottom:8px">
+            <button class="spy-op" onclick="launchSpy('recon')">🔍 侦察 (200金) - 查看目标资源兵力</button>
+            <button class="spy-op" onclick="launchSpy('sabotage')">💥 破坏 (500金+50暗物质) - 降低目标建筑等级</button>
+            <button class="spy-op" onclick="launchSpy('steal')">🫳 窃取 (300金) - 偷取5%资源</button>
+            <button class="spy-op" onclick="launchSpy('counter_intel')">🛡️ 反间谍 (200金) - 提升防御+20</button>
+        </div></div>
+        <div class="card"><h3>📜 行动记录</h3>`;
+    (hist?.ops||[]).forEach(op=>{
+        const icon=op.result==='success'?'✅':op.result==='caught'?'🚨':'❌';
+        h+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+            ${icon} ${op.op_type} → ${op.target_name} (${op.success_rate}%) <small style="color:var(--muted)">${new Date(op.created_at).toLocaleString()}</small></div>`;
+    });
+    h+=`</div>`;
+    document.getElementById('panel-spy').innerHTML=h;
+}
+async function launchSpy(opType){
+    const tid=prompt('目标殖民地ID:');
+    if(!tid)return;
+    const r=await api('/espionage/launch','POST',{target_id:parseInt(tid),op_type:opType});
+    if(!r)return;
+    toast(`${opType}: ${r.result} (成功率${r.success_rate}%)`);
+    loadSpy();
+}
+
+// ============ V8: 通知中心 ============
+async function toggleNotif(){
+    const dd=document.getElementById('notif-dropdown');
+    if(dd.style.display==='block'){dd.style.display='none';return;}
+    dd.style.display='block';
+    const r=await api('/notifications');
+    const ur=await api('/reports/unread_count');
+    let h=`<div style="padding:6px;border-bottom:1px solid var(--border);font-size:11px;color:var(--accent);font-weight:bold">📬 通知中心 (${ur?.unread_reports||0}条未读战报)</div>`;
+    (r||[]).slice(0,15).forEach(n=>{
+        h+=`<div class="notif-item ${n.is_read?'':'unread'}">
+            <b>${n.title}</b><br><small>${n.content}</small><br><small style="color:var(--muted)">${new Date(n.created_at).toLocaleString()}</small></div>`;
+    });
+    dd.innerHTML=h;
+}
+
+// 更新未读计数
+async function updateNotifCount(){
+    const r=await api('/reports/unread_count');
+    if(r&&(r.unread_reports>0||r.unread_notifications>0)){
+        const total=(r.unread_reports||0)+(r.unread_notifications||0);
+        const badge=document.getElementById('notif-count');
+        if(badge){badge.textContent=total;badge.style.display=total>0?'inline':'none';}
+    }
+}
+
+// ============ Init ============
+(function(){
+    const t=localStorage.getItem('sc_token'),u=localStorage.getItem('sc_uid');
+    if(t&&u){
+        token=t;uid=u;
+        // 验证token是否有效
+        fetch(API+'/colony',{headers:{'Authorization':'Bearer '+token}})
+        .then(r=>{
+            if(r.status===401){
+                // token失效，清除并显示登录
+                token='';uid=0;localStorage.removeItem('sc_token');localStorage.removeItem('sc_uid');
+                document.getElementById('login-screen').style.display='block';
+                document.getElementById('game-content').style.display='none';
+            } else {
+                enterGame();
+            }
+        })
+        .catch(()=>{
+            token='';uid=0;localStorage.removeItem('sc_token');localStorage.removeItem('sc_uid');
+        });
+    }
+})();
+</script>
+</body>
+</html>

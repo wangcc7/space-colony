@@ -1,0 +1,101 @@
+version: "3"
+
+services:
+
+  # MySQL 5.7 数据库
+  db:
+    image: registry.cn-hangzhou.aliyuncs.com/bigdata_cloudnative/mysql-test:5.7
+    container_name: sc-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: spacecolony
+      MYSQL_USER: game
+      MYSQL_PASSWORD: gamepass
+      TZ: "Asia/Shanghai"
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-time-zone=+08:00
+      --skip-character-set-client-handshake
+      --init-connect="SET NAMES utf8mb4"
+      --max_connections=50
+      --innodb_buffer_pool_size=64M
+      --innodb_log_buffer_size=8M
+      --key_buffer_size=8M
+      --query_cache_size=0
+      --skip-name-resolve
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  # Redis 6-alpine 缓存
+  redis:
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:6-alpine
+    container_name: sc-redis
+    restart: unless-stopped
+    environment:
+      TZ: "Asia/Shanghai"
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save ""
+    volumes:
+      - redis_data:/data
+
+  # FastAPI Backend（主游戏服务）
+  backend:
+    build: ./backend
+    container_name: sc-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: game
+      DB_PASS: gamepass
+      DB_NAME: spacecolony
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: "spacecolony-v7-2026"
+      TZ: "Asia/Shanghai"
+    volumes:
+      - ./frontend:/app/static:ro
+    depends_on:
+      - db
+      - redis
+
+  # FastAPI Admin Backend（管理后台，58018端口）
+  admin:
+    build: ./admin
+    container_name: sc-admin
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: game
+      DB_PASS: gamepass
+      DB_NAME: spacecolony
+      REDIS_URL: redis://redis:6379/0
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin888"
+      TZ: "Asia/Shanghai"
+    depends_on:
+      - db
+      - redis
+
+  # Nginx 反向代理
+  nginx:
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/nginx:1.25.3
+    container_name: sc-nginx
+    restart: unless-stopped
+    environment:
+      TZ: "Asia/Shanghai"
+    ports:
+      - "80:80"
+      - "58018:58018"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - admin
+
+volumes:
+  mysql_data:
+  redis_data:
