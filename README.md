@@ -153,22 +153,40 @@ docker-compose logs -f backend
 
 ---
 
+## 📖 设计文档
+
+想了解这个游戏的**设计哲学、决策理由和开发思路**？请阅读 [DESIGN.md](./DESIGN.md)，其中记录了：
+
+- 为什么故意让 90% 的玩家在股市亏损
+- NPC 聊天系统如何从"各说各话"进化为"群体讨论"
+- 战争系统的阵型博弈矩阵
+- 从 V5 到 V9 每个版本的迭代故事
+- 经济平衡、反作弊、技术选型的思考过程
+
+---
+
 ## 📂 目录结构
 
 ```
 space-colony/
 ├── docker-compose.yml       # 容器编排
-├── Dockerfile               # 后端镜像构建
+├── DESIGN.md                # 游戏设计文档
+├── README.md                # 项目说明
 ├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
 │   └── main.py              # FastAPI 主程序 (~3500行)
 ├── frontend/
 │   └── index.html           # 游戏前端 (~1300行)
 ├── admin/
+│   ├── Dockerfile
+│   ├── requirements.txt
 │   └── main.py              # 管理后台 (~1500行)
 ├── nginx/
 │   └── default.conf         # Nginx 配置
 └── db/
-    └── init.sql             # 数据库初始化脚本
+    ├── charset.cnf
+    └── init.sql             # 数据库初始化脚本 (40+张表)
 ```
 
 ---
