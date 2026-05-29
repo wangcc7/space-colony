@@ -1,7 +1,7 @@
 """
-星际殖民地 V8.0 战争纪元 - FastAPI + aiomysql + Redis
+星际殖民地 V9.0 深渊纪元 - FastAPI + aiomysql + Redis
+V9: 股市暴涨暴跌/期货修复/领地一键/探索修复/智能NPC聊天/NPC后台管理/快速合成/战争系统修复
 V8: 袭击系统/防御体系/战报中心/派系战争/赏金/竞技场/间谍/跨模块联动
-V7.1修复：乱码修复/时区统一/期货面板/每日任务/API路径修正/事件显示修复
 """
 import asyncio, json, hashlib, random, logging, time, math, uuid, os
 from datetime import datetime, timedelta, date
@@ -268,36 +268,54 @@ NPC_PERSONALITIES = {
     }
 }
 
-# NPC聊天话题模板
+# NPC聊天话题模板 - V9: 分为多个话题组，支持对前文的回应
 NPC_CHAT_TOPICS = [
-    "最近{resource}价格波动好大啊",
+    # 经济话题
+    "最近{resource}价格波动好大啊，你们怎么看？",
     "有没有人一起探索{sector}？",
-    "我的殖民地升级了！",
-    "今天天气不错，适合挖矿",
     "谁有多余的{resource}？我高价收",
-    "刚被{enemy}打劫了，好气",
-    "推荐大家研究{tech}科技",
-    "这个游戏的股票太刺激了",
-    "我加入{faction}了！",
-    "量子矿脉到底在哪啊？",
-    "反物质引擎什么时候能用？",
-    "暗物质风暴要来了！",
-    "有没有人组队去深空探索？",
+    "等离子体价格要涨了，快买！",
+    "市场这是要崩的节奏吗？大家注意风险",
+    "今天股市又暴跌了，我的持仓全绿了",
+    # 政治时事话题（游戏内世界观的"政治"）
+    "听说星河联邦又要增加殖民税了？",
+    "暗影军团的势力越来越大，大家怎么看？",
+    "联盟议会要改选了，你支持谁？",
+    "自由贸易协议到底签不签，对市场影响很大",
+    "边境星域的管辖权争议越来越激烈了",
+    "新殖民法对咱们小殖民地太不公平了",
+    # 生活聊天
+    "我的殖民地升级了！终于Lv5了",
+    "刚被{enemy}打劫了，好气，有人帮忙复仇吗？",
+    "推荐大家研究{tech}科技，真的好用",
+    "这个游戏的股票太刺激了，心脏受不了",
+    "我加入{faction}了！大家一起来！",
+    "量子矿脉到底在哪啊？找了半天",
+    "反物质引擎什么时候能用？等不及了",
     "今天赚了不少金币，嘿嘿",
     "防御工事一定要升级，不然容易被打",
-    "我的专精选的{spec}，感觉不错",
-    "合成稀有金属亏了...",
-    "等离子体价格要涨了，快买！",
     "这游戏越来越好玩了",
-    "新人求带！",
-    "谁有星际地图？",
-    "跃迁引擎2.0出了吗？",
-    "纳米材料太贵了吧",
-    "今天有什么新任务？",
-    "派系战什么时候开？",
+    "新人求带！刚来什么都不懂",
+    # 回应型模板（NPC会引用最近的话题）
+    "同意楼上说的，{resource}确实值得关注",
+    "我倒不这么看，{tech}才是未来",
+    "哈哈哈，我也遇到一样的情况",
+    "别慌，市场总会回调的",
+    "有道理，但我觉得风险也很大",
+    "同感！我也是这么想的",
 ]
 
-app = FastAPI(title="星际殖民地V8.0-战争纪元", version="8.0")
+# V9: NPC讨论话题池（一组NPC围绕同一话题讨论）
+NPC_DISCUSSION_TOPICS = [
+    {"topic": "殖民税改革", "views": ["增税对底层殖民者太不友好了", "但增税能加强联邦军力啊", "我觉得应该按殖民地等级阶梯收税", "反正我们小殖民地交不起"]},
+    {"topic": "暗影军团扩张", "views": ["他们的军力增长太快了", "需要联合起来制衡", "也有人说他们只是自保", "不管怎样，周边星域都在紧张"]},
+    {"topic": "股市暴跌", "views": ["又暴跌了！我亏了一大笔", "这是抄底的好时机", "别急，等跌稳了再入", "我就说这波涨不持久"]},
+    {"topic": "新能源发现", "views": ["暗物质开采效率突破性提升！", "能源板块的股票要起飞", "对矿业也有间接利好", "但对传统能源是利空"]},
+    {"topic": "星际贸易路线", "views": ["新的贸易路线开通了", "运输板块肯定受益", "运输成本降了，商品价格也会降", "对消费者是好事"]},
+    {"topic": "边境冲突", "views": ["边境星域又打起来了", "军工板块又要涨", "希望别扩大化", "应该通过外交途径解决"]},
+]
+
+app = FastAPI(title="星际殖民地V9.0-深渊纪元", version="9.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 pool = None
@@ -998,6 +1016,32 @@ async def craft_resource(m: CraftModel, uid=Depends(get_user)):
             await db_exec(cur, "INSERT INTO colony_craft_log (colony_id,recipe_id,amount) VALUES (%s,%s,%s)", (c["id"], m.recipe_id, m.amount))
             return {"msg": f"合成成功：{recipe['name']} x{m.amount}"}
 
+# V9: 快速合成（自动计算最大可合成数量）
+@app.post("/api/colony/craft_max")
+async def craft_max_resource(m: CraftModel, uid=Depends(get_user)):
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            recipe = CRAFT_RECIPES.get(m.recipe_id)
+            if not recipe: raise HTTPException(400, f"未知配方，可选: {list(CRAFT_RECIPES.keys())}")
+            c = await db_one(cur, "SELECT * FROM colonies WHERE user_id=%s", (uid,))
+            # 计算最大可合成数量
+            max_amount = 999
+            for res, need in recipe["inputs"].items():
+                available = c.get(res, 0) or 0
+                if need > 0:
+                    can_make = available // need
+                    max_amount = min(max_amount, can_make)
+            if max_amount <= 0:
+                raise HTTPException(400, "资源不足，无法合成")
+            # 扣除资源
+            for res, need in recipe["inputs"].items():
+                need_total = need * max_amount
+                await db_exec(cur, f"UPDATE colonies SET {res}={res}-%s WHERE id=%s", (need_total, c["id"]))
+            output_amount = recipe["output"] * max_amount
+            await db_exec(cur, f"UPDATE colonies SET {m.recipe_id}={m.recipe_id}+%s WHERE id=%s", (output_amount, c["id"]))
+            await db_exec(cur, "INSERT INTO colony_craft_log (colony_id,recipe_id,amount) VALUES (%s,%s,%s)", (c["id"], m.recipe_id, max_amount))
+            return {"msg": f"快速合成成功：{recipe['name']} x{max_amount}", "amount": max_amount}
+
 @app.get("/api/colony/craft_recipes")
 async def get_craft_recipes(uid=Depends(get_user)):
     async with pool.acquire() as conn:
@@ -1516,15 +1560,6 @@ async def place_bounty(m: BountyPlaceModel, uid=Depends(get_user)):
 async def bounty_board(uid=Depends(get_user)):
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            bounties = await db_query(cur, """SELECT b.*, t.name as target_name, p.name as placer_name
-                FROM bounties b JOIN colonies t ON b.target_id=t.id JOIN colonies p ON b.placer_id=p.id
-                WHERE b.status='active' ORDER BY b.amount DESC LIMIT 30""")
-            return {"bounties": bounties}
-
-@app.get("/api/bounty/board")
-async def bounty_board(uid=Depends(get_user)):
-    async with pool.acquire() as conn:
-        async with conn.cursor(aiomysql.DictCursor) as cur:
             bounties = await db_query(cur, """SELECT b.*, c.name as target_name, p.name as placer_name
                 FROM bounties b JOIN colonies c ON b.target_id=c.id LEFT JOIN colonies p ON b.placer_id=p.id
                 WHERE b.status='active' ORDER BY b.amount DESC LIMIT 30""")
@@ -1744,8 +1779,18 @@ async def stock_trade(m: StockTradeModel, uid=Depends(get_user)):
             stock = await db_one(cur, "SELECT * FROM stocks WHERE code=%s AND is_active=1", (m.code,))
             if not stock: raise HTTPException(404, "股票不存在")
             trade_price = m.price if m.price else float(stock["current_price"])
+            # V9: 滑点机制 - 买入价上浮0.5-2%，卖出价下浮0.5-2%
+            if m.direction == "buy":
+                slippage = random.uniform(0.005, 0.02)
+                trade_price = round(trade_price * (1 + slippage), 2)
+            else:
+                slippage = random.uniform(0.005, 0.02)
+                trade_price = round(trade_price * (1 - slippage), 2)
             total = round(trade_price * m.amount, 2)
-            commission = round(total * 0.001, 2)
+            # V9: 手续费从0.1%提升到0.3%（双向），印花税卖出0.1%
+            commission = round(total * 0.003, 2)
+            if m.direction == "sell":
+                commission += round(total * 0.001, 2)  # 印花税
             cid = await get_colony_id(cur, uid)
             c = await db_one(cur, "SELECT gold FROM colonies WHERE id=%s", (cid,))
 
@@ -1796,7 +1841,10 @@ async def stock_trade_preview(code: str, direction: str, amount: int, uid=Depend
             if not stock: raise HTTPException(404, "股票不存在")
             price = float(stock["current_price"])
             total = round(price * amount, 2)
-            commission = round(total * 0.001, 2)
+            # V9: 同步手续费计算
+            commission = round(total * 0.003, 2)
+            if direction == "sell":
+                commission += round(total * 0.001, 2)  # 印花税
             cid = await get_colony_id(cur, uid)
             c = await db_one(cur, "SELECT gold FROM colonies WHERE id=%s", (cid,))
             can_afford = c["gold"] >= total + commission if direction == "buy" else True
@@ -1959,15 +2007,23 @@ async def open_future(m: FuturesModel, uid=Depends(get_user)):
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             rp = await db_one(cur, "SELECT current_price FROM resource_prices WHERE resource_type=%s", (m.resource_type,))
-            if not rp: raise HTTPException(400, "未知资源")
-            margin = int(m.amount * rp["current_price"] / m.leverage)
+            if not rp: raise HTTPException(400, "未知资源类型")
+            # V9修复: 保证金计算，amount是合约单位数量，价格取整
+            price = float(rp["current_price"])
+            if price <= 0: raise HTTPException(400, "该资源暂不可交易")
+            leverage = max(1, min(10, m.leverage))  # V9: 杠杆1-10倍限制
+            margin = int(m.amount * price / leverage)
+            if margin <= 0: raise HTTPException(400, "合约价值过低")
+            # V9: 开仓手续费0.5%
+            fee = int(m.amount * price * 0.005)
+            total_cost = margin + fee
             cid = await get_colony_id(cur, uid)
             c = await db_one(cur, "SELECT gold FROM colonies WHERE id=%s", (cid,))
-            if c["gold"] < margin: raise HTTPException(400, f"保证金不足（需{margin}）")
-            await db_exec(cur, "UPDATE colonies SET gold=gold-%s WHERE id=%s", (margin, cid))
+            if c["gold"] < total_cost: raise HTTPException(400, f"金币不足（需{total_cost}，含手续费{fee}）")
+            await db_exec(cur, "UPDATE colonies SET gold=gold-%s WHERE id=%s", (total_cost, cid))
             await db_exec(cur, "INSERT INTO futures_contracts (colony_id,resource_type,direction,amount,entry_price,leverage,margin) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                (cid, m.resource_type, m.direction, m.amount, rp["current_price"], m.leverage, margin))
-            return {"msg": "开仓成功", "margin": margin}
+                (cid, m.resource_type, m.direction, m.amount, price, leverage, margin))
+            return {"msg": f"开仓成功（手续费{fee}金）", "margin": margin, "fee": fee}
 
 @app.get("/api/futures/positions")
 async def get_futures(uid=Depends(get_user)):
@@ -1990,11 +2046,17 @@ async def close_future(fid: int, uid=Depends(get_user)):
             cf = await db_one(cur, "SELECT * FROM futures_contracts WHERE id=%s AND colony_id=%s AND status='open'", (fid, cid))
             if not cf: raise HTTPException(404, "合约不存在")
             rp = await db_one(cur, "SELECT current_price FROM resource_prices WHERE resource_type=%s", (cf["resource_type"],))
+            if not rp: raise HTTPException(400, "资源价格不存在")
             pnl = (rp["current_price"]-cf["entry_price"])*cf["amount"] if cf["direction"]=="long" else (cf["entry_price"]-rp["current_price"])*cf["amount"]
             pnl = int(pnl*cf["leverage"])
-            await db_exec(cur, "UPDATE colonies SET gold=gold+%s WHERE id=%s", (cf["margin"]+pnl, cid))
-            await db_exec(cur, "UPDATE futures_contracts SET status='closed',profit_loss=%s,closed_at=NOW() WHERE id=%s", (pnl, fid))
-            return {"msg": f"平仓盈亏: {pnl}金币", "pnl": pnl}
+            # V9: 平仓手续费0.5%
+            fee = int(cf["margin"] * 0.005)
+            net_pnl = pnl - fee
+            # V9: 保证金+净盈亏，最低退0
+            refund = max(0, cf["margin"] + net_pnl)
+            await db_exec(cur, "UPDATE colonies SET gold=gold+%s WHERE id=%s", (refund, cid))
+            await db_exec(cur, "UPDATE futures_contracts SET status='closed',profit_loss=%s,closed_at=NOW() WHERE id=%s", (net_pnl, fid))
+            return {"msg": f"平仓盈亏: {net_pnl}金币（手续费{fee}）", "pnl": net_pnl, "fee": fee}
 
 # ============================================================
 #  论坛
@@ -2320,10 +2382,22 @@ async def claim_expedition(eid: int, uid=Depends(get_user)):
             exp = await db_one(cur, "SELECT * FROM expeditions WHERE id=%s AND colony_id=%s", (eid, cid))
             if not exp: raise HTTPException(404, "探索记录不存在")
             if exp["status"] != "completed": raise HTTPException(400, "探索尚未完成")
+            # V9修复: 实际发放奖励到殖民地
+            r_min = exp.get("reward_minerals", 0) or 0
+            r_eng = exp.get("reward_energy", 0) or 0
+            r_food = exp.get("reward_food", 0) or 0
+            r_gold = exp.get("reward_gold", 0) or 0
+            r_score = exp.get("reward_score", 0) or 0
+            if r_min + r_eng + r_food + r_gold + r_score > 0:
+                await db_exec(cur, "UPDATE colonies SET minerals=minerals+%s,energy=energy+%s,food=food+%s,gold=gold+%s,score=score+%s WHERE id=%s",
+                    (r_min, r_eng, r_food, r_gold, r_score, cid))
+            # 标记已领取
+            await db_exec(cur, "UPDATE expeditions SET status='claimed' WHERE id=%s", (eid,))
+            await check_achievements(cur, cid, uid)
             return {"msg": "奖励已领取", "rewards": {
-                "minerals": exp["reward_minerals"], "energy": exp["reward_energy"],
-                "food": exp["reward_food"], "gold": exp["reward_gold"],
-                "score": exp["reward_score"], "discovery": exp["reward_discovery"]
+                "minerals": r_min, "energy": r_eng,
+                "food": r_food, "gold": r_gold,
+                "score": r_score, "discovery": exp.get("reward_discovery")
             }}
 
 @app.get("/api/daily_tasks")
@@ -2416,6 +2490,56 @@ async def collect_territory_income(tid: int, uid=Depends(get_user)):
             await db_exec(cur, "UPDATE colonies SET minerals=minerals+%s,energy=energy+%s,food=food+%s,gold=gold+%s WHERE id=%s",
                 (g_minerals, g_energy, g_food, g_gold, cid))
             return {"msg": f"收取【{terr['name']}】产出：矿+{g_minerals} 能+{g_energy} 食+{g_food} 金+{g_gold}"}
+
+# V9: 领地一键收取所有
+@app.post("/api/territories/collect_all")
+async def collect_all_territories(uid=Depends(get_user)):
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            cid = await get_colony_id(cur, uid)
+            my_terrs = await db_query(cur, "SELECT * FROM territories WHERE owner_colony=%s AND is_active=1", (cid,))
+            if not my_terrs:
+                raise HTTPException(400, "没有可收取的领地")
+            total = {"minerals": 0, "energy": 0, "food": 0, "gold": 0}
+            names = []
+            for terr in my_terrs:
+                total["minerals"] += terr["bonus_minerals"] * 5
+                total["energy"] += terr["bonus_energy"] * 5
+                total["food"] += terr["bonus_food"] * 5
+                total["gold"] += terr["bonus_score"] * 2
+                names.append(terr["name"])
+            await db_exec(cur, "UPDATE colonies SET minerals=minerals+%s,energy=energy+%s,food=food+%s,gold=gold+%s WHERE id=%s",
+                (total["minerals"], total["energy"], total["food"], total["gold"], cid))
+            return {"msg": f"一键收取{len(names)}块领地：矿+{total['minerals']} 能+{total['energy']} 食+{total['food']} 金+{total['gold']}", "total": total, "count": len(names)}
+
+# V9: 领地一键夺取（自动选择可夺取的领地）
+@app.post("/api/territories/capture_all")
+async def capture_all_territories(uid=Depends(get_user)):
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            cid = await get_colony_id(cur, uid)
+            c = await db_one(cur, "SELECT * FROM colonies WHERE id=%s", (cid,))
+            # 查找所有可夺取的领地(无主或防御力低于自身攻击力)
+            capturable = await db_query(cur, """SELECT t.*, c2.defense_power, c2.id as defender_id
+                FROM territories t LEFT JOIN colonies c2 ON t.owner_colony=c2.id
+                WHERE t.is_active=1 AND (t.owner_colony IS NULL OR (t.owner_colony != %s AND c2.defense_power < %s))
+                ORDER BY t.bonus_score DESC LIMIT 5""", (cid, c["attack_power"]))
+            if not capturable:
+                raise HTTPException(400, "没有可夺取的领地（攻击力不足或已全部占领）")
+            captured = []
+            for terr in capturable:
+                if terr["owner_colony"] and terr["owner_colony"] == cid:
+                    continue
+                if terr["defense_power"] and terr["defense_power"] >= c["attack_power"]:
+                    continue
+                if terr.get("defender_id"):
+                    await db_exec(cur, "UPDATE colonies SET lose_count=lose_count+1 WHERE id=%s", (terr["defender_id"],))
+                await db_exec(cur, "UPDATE territories SET owner_colony=%s,captured_at=NOW() WHERE id=%s", (cid, terr["id"]))
+                await db_exec(cur, "UPDATE colonies SET score=score+%s WHERE id=%s", (terr["bonus_score"], cid))
+                captured.append(terr["name"])
+            if not captured:
+                raise HTTPException(400, "夺取失败，攻击力不足")
+            return {"msg": f"一键夺取{len(captured)}块领地：{', '.join(captured)}", "captured": captured, "count": len(captured)}
 
 @app.get("/api/events/today")
 async def today_events(uid=Depends(get_user)):
@@ -2570,9 +2694,16 @@ async def bg_stock_engine():
                     for s in stocks:
                         price = float(s["current_price"])
                         prev = float(s["prev_close"])
-                        volatility = random.gauss(0, 0.015)
-                        trend = float(s["change_pct"]) / 100 * 0.1
-                        change = volatility + trend
+                        # V9: 大幅波动 - 标准差从0.015提升到0.045，波动更剧烈更频繁
+                        volatility = random.gauss(0, 0.045)
+                        # V9: 增加趋势惯性，让涨跌更持久
+                        trend = float(s["change_pct"]) / 100 * 0.25
+                        # V9: 随机黑天鹅事件(5%概率)，触发暴涨或暴跌
+                        black_swan = 0
+                        if random.random() < 0.05:
+                            black_swan = random.choice([-0.08, -0.06, -0.05, 0.05, 0.06, 0.08])
+                            log.info(f"V9黑天鹅: {s['code']} 触发{('暴跌' if black_swan < 0 else '暴涨')} {black_swan*100:.0f}%")
+                        change = volatility + trend + black_swan
                         new_price = round(price * (1 + change), 2)
                         limit_up = round(prev * 1.1, 2)
                         limit_down = round(prev * 0.9, 2)
@@ -3016,7 +3147,9 @@ async def npc_research(cur, bot):
 #  后台任务：NPC聊天灌水
 # ============================================================
 async def bg_npc_chat():
+    """V9: NPC智能聊天 - 围绕话题讨论而非各聊各的"""
     await asyncio.sleep(25)
+    discussion_state = {"topic": None, "views_used": set(), "round": 0}
     while True:
         try:
             async with pool.acquire() as conn:
@@ -3026,40 +3159,89 @@ async def bg_npc_chat():
                     if not npcs:
                         await asyncio.sleep(10)
                         continue
-                    speakers = random.sample(npcs, min(random.randint(1,2), len(npcs)))
-                    for bot in speakers:
+
+                    # V9: 50%概率发起话题讨论（多个NPC围绕同一话题）
+                    if random.random() < 0.5:
+                        discussion = random.choice(NPC_DISCUSSION_TOPICS)
+                        discussion_state["topic"] = discussion["topic"]
+                        discussion_state["views_used"] = set()
+                        discussion_state["round"] = 0
+                        # 选2-3个NPC参与讨论
+                        speakers = random.sample(npcs, min(random.randint(2, 3), len(npcs)))
+                        for i, bot in enumerate(speakers):
+                            pers = NPC_PERSONALITIES.get(bot.get("personality","trader"), NPC_PERSONALITIES["trader"])
+                            view_idx = i % len(discussion["views"])
+                            if view_idx in discussion_state["views_used"]:
+                                view_idx = (view_idx + 1) % len(discussion["views"])
+                            discussion_state["views_used"].add(view_idx)
+                            msg_text = discussion["views"][view_idx]
+                            # 根据人格微调
+                            if pers["chat_style"] == "啰嗦":
+                                msg_text = f"关于{discussion['topic']}嘛，{msg_text}，大家觉得呢？"
+                            elif pers["chat_style"] == "简短":
+                                msg_text = f"{discussion['topic']}: {msg_text}"
+                            elif pers["chat_style"] == "学术":
+                                msg_text = f"从分析角度看{discussion['topic']}，{msg_text}"
+                            elif pers["chat_style"] == "粗暴":
+                                msg_text = f"{discussion['topic']}？{msg_text}，不服来辩！"
+                            elif pers["chat_style"] == "话痨":
+                                msg_text = f"哎哎哎说到{discussion['topic']}，我必须说，{msg_text}，你们同意不？"
+                            prefix = pers["emoji"]
+                            msg = f"{prefix} {msg_text}"
+                            await db_exec(cur, "INSERT INTO chat_messages (colony_id,author_name,message,is_npc) VALUES (%s,%s,%s,1)",
+                                (bot["colony_id"], bot["colony_name"], msg))
+                            await asyncio.sleep(0.3)  # 稍微错开发送时间
+                    else:
+                        # 独立发言 - 有时会回应最近的消息
+                        recent_msgs = await db_query(cur, "SELECT message, author_name FROM chat_messages ORDER BY id DESC LIMIT 3")
+                        bot = random.choice(npcs)
                         pers = NPC_PERSONALITIES.get(bot.get("personality","trader"), NPC_PERSONALITIES["trader"])
                         if random.random() > pers["chat_freq"]:
+                            await asyncio.sleep(random.randint(3, 8))
                             continue
-                        phrase = random.choice(pers["phrases"])
-                        resources = ["矿物","能量","食物","稀有金属","水晶","等离子体"]
-                        stocks_list = ["星际矿业","量子银行","光能科技","芯片国际"]
-                        sectors = ["仙女座","猎户臂","半人马座","天琴座"]
-                        factions_list = ["星河联邦","暗影军团","知识圣殿","自由联盟"]
-                        techs = ["量子计算","暗物质采集","纳米材料","反物质引擎"]
-                        phrase = phrase.replace("{resource}", random.choice(resources))
-                        phrase = phrase.replace("{stock}", random.choice(stocks_list))
-                        phrase = phrase.replace("{sector}", random.choice(sectors))
-                        phrase = phrase.replace("{faction}", random.choice(factions_list))
-                        phrase = phrase.replace("{tech}", random.choice(techs))
-                        phrase = phrase.replace("{spec}", random.choice(["军事","经济","文化","科研"]))
-                        phrase = phrase.replace("{enemy}", random.choice(["星盗","暗影","异形"]))
-                        phrase = phrase.replace("{amount}", str(random.randint(100,5000)))
-                        phrase = phrase.replace("{count}", str(random.randint(1,10)))
-
-                        if random.random() < 0.4:
-                            topic = random.choice(NPC_CHAT_TOPICS)
-                            topic = topic.replace("{resource}", random.choice(resources))
-                            topic = topic.replace("{sector}", random.choice(sectors))
-                            topic = topic.replace("{faction}", random.choice(factions_list))
-                            topic = topic.replace("{tech}", random.choice(techs))
-                            topic = topic.replace("{spec}", random.choice(["军事","经济","文化","科研"]))
-                            topic = topic.replace("{enemy}", random.choice(["星盗","暗影","异形"]))
-                            phrase = topic
-
+                        # V9: 30%概率回应最近的消息
+                        if recent_msgs and random.random() < 0.3:
+                            last_msg = recent_msgs[0]["message"]
+                            # 简单回应
+                            responses = [
+                                f"同意{recent_msgs[0]['author_name']}说的",
+                                f"我倒不这么看",
+                                f"哈哈哈，{recent_msgs[0]['author_name']}说得对",
+                                f"有道理，我也这么觉得",
+                                f"这个观点很新颖",
+                                f"别急，让子弹飞一会儿",
+                            ]
+                            msg_text = random.choice(responses)
+                        else:
+                            phrase = random.choice(pers["phrases"])
+                            resources = ["矿物","能量","食物","稀有金属","水晶","等离子体"]
+                            stocks_list = ["星际矿业","量子银行","光能科技","芯片国际"]
+                            sectors = ["仙女座","猎户臂","半人马座","天琴座"]
+                            factions_list = ["星河联邦","暗影军团","知识圣殿","自由联盟"]
+                            techs = ["量子计算","暗物质采集","纳米材料","反物质引擎"]
+                            phrase = phrase.replace("{resource}", random.choice(resources))
+                            phrase = phrase.replace("{stock}", random.choice(stocks_list))
+                            phrase = phrase.replace("{sector}", random.choice(sectors))
+                            phrase = phrase.replace("{faction}", random.choice(factions_list))
+                            phrase = phrase.replace("{tech}", random.choice(techs))
+                            phrase = phrase.replace("{spec}", random.choice(["军事","经济","文化","科研"]))
+                            phrase = phrase.replace("{enemy}", random.choice(["星盗","暗影","异形"]))
+                            phrase = phrase.replace("{amount}", str(random.randint(100,5000)))
+                            phrase = phrase.replace("{count}", str(random.randint(1,10)))
+                            # V9: 40%概率用话题模板
+                            if random.random() < 0.4:
+                                topic = random.choice(NPC_CHAT_TOPICS)
+                                topic = topic.replace("{resource}", random.choice(resources))
+                                topic = topic.replace("{sector}", random.choice(sectors))
+                                topic = topic.replace("{faction}", random.choice(factions_list))
+                                topic = topic.replace("{tech}", random.choice(techs))
+                                topic = topic.replace("{spec}", random.choice(["军事","经济","文化","科研"]))
+                                topic = topic.replace("{enemy}", random.choice(["星盗","暗影","异形"]))
+                                msg_text = topic
+                            else:
+                                msg_text = phrase
                         prefix = pers["emoji"]
-                        msg = f"{prefix} {phrase}"
-
+                        msg = f"{prefix} {msg_text}"
                         await db_exec(cur, "INSERT INTO chat_messages (colony_id,author_name,message,is_npc) VALUES (%s,%s,%s,1)",
                             (bot["colony_id"], bot["colony_name"], msg))
         except Exception as e:
@@ -3348,9 +3530,8 @@ async def bg_expedition_check():
                         reward_desc = random.choice(discoveries)
                         await db_exec(cur, """UPDATE expeditions SET status='completed', reward_minerals=%s, reward_energy=%s, reward_food=%s, reward_gold=%s, reward_score=%s, reward_discovery=%s, completed_at=NOW() WHERE id=%s""",
                             (rewards["reward_minerals"], rewards["reward_energy"], rewards["reward_food"], rewards["reward_gold"], rewards["reward_score"], reward_desc, exp["id"]))
-                        await db_exec(cur, "UPDATE colonies SET minerals=minerals+%s,energy=energy+%s,food=food+%s,gold=gold+%s,score=score+%s WHERE id=%s",
-                            (rewards["reward_minerals"], rewards["reward_energy"], rewards["reward_food"], rewards["reward_gold"], rewards["reward_score"], exp["colony_id"]))
-                        await add_notification(cur, exp["colony_id"], "探索完成！", f"舰队从{exp['target_sector']}返回，{reward_desc}", "success")
+                        # V9修复: 不再自动发放奖励，等玩家手动领取(claim_expedition中发放)
+                        await add_notification(cur, exp["colony_id"], "探索完成！", f"舰队从{exp['target_sector']}返回，{reward_desc}，请领取奖励！", "success")
         except Exception as e:
             log.error(f"Expedition check error: {e}")
         await asyncio.sleep(300)

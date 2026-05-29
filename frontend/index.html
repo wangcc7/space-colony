@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>星际殖民地 V8</title>
+<title>星际殖民地 V9</title>
 <style>
 :root{--bg:#0a0e1a;--card:#111827;--border:#1e3a5f;--accent:#00d4ff;--accent2:#7c3aed;--red:#ef4444;--green:#22c55e;--gold:#fbbf24;--text:#e2e8f0;--muted:#64748b;--sidebar-w:180px}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -162,7 +162,6 @@ th{color:var(--accent);font-weight:600;font-size:11px}
 <div class="nav-item" onclick="showPanel('expeditions')">🚀 探索</div>
 <div class="nav-item" onclick="showPanel('forum')">💬 论坛</div>
 <div class="nav-item" onclick="showPanel('chat')">📡 聊天室</div>
-<div class="nav-item" onclick="showPanel('npc')">🤖 NPC</div>
 <div class="nav-item" onclick="showPanel('leaderboard')">🏆 排行</div>
 <div class="nav-item" onclick="showPanel('achievements')">🎖️ 成就</div>
 <div class="nav-item" onclick="showPanel('tasks')">📋 每日任务</div>
@@ -215,7 +214,6 @@ th{color:var(--accent);font-weight:600;font-size:11px}
 <div id="panel-expeditions" class="panel"></div>
 <div id="panel-forum" class="panel"></div>
 <div id="panel-chat" class="panel"></div>
-<div id="panel-npc" class="panel"></div>
 <div id="panel-leaderboard" class="panel"></div>
 <div id="panel-achievements" class="panel"></div>
 <div id="panel-tasks" class="panel"></div>
@@ -249,6 +247,8 @@ function showToast(msg, duration){
     document.body.appendChild(t);
     setTimeout(()=>{if(t.parentNode)t.parentNode.removeChild(t)},duration);
 }
+// V9: toast别名
+const toast = showToast;
 
 // ============ 时间显示 ============
 function updateClock(){
@@ -267,9 +267,17 @@ function toggleSidebar(){
 
 // ============ Auth ============
 let api401Count=0;
-async function api(path,opts={}){
+async function api(path, optsOrMethod={}, bodyData){
     const h={'Content-Type':'application/json'};
     if(token)h['Authorization']='Bearer '+token;
+    // V9修复: 兼容 api(path, 'POST', {...}) 格式
+    let opts;
+    if(typeof optsOrMethod === 'string'){
+        opts = {method: optsOrMethod};
+        if(bodyData) opts.body = JSON.stringify(bodyData);
+    } else {
+        opts = optsOrMethod;
+    }
     try{
         const r=await fetch(API+path,{...opts,headers:{...h,...(opts.headers||{})}});
         if(r.status===401){
@@ -341,7 +349,7 @@ function showPanel(name){
     if(event?.target?.classList)n=event.target.closest('.nav-item')?.classList?.add('active');
     // 手机端关闭侧边栏
     if(window.innerWidth<=768){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show');}
-    const loaders={colony:loadColony,stocks:loadStocks,market:loadMarket,futures:loadFuturesPanel,territories:loadTerritories,factions:loadFactions,expeditions:loadExpeditions,forum:loadForum,chat:initChat,npc:loadNpc,leaderboard:loadLeaderboard,achievements:loadAchievements,tasks:loadDailyTasks,craft:loadCraft,god:loadGod,war:loadWar,arena:loadArena,bounty:loadBounty,spy:loadSpy};
+    const loaders={colony:loadColony,stocks:loadStocks,market:loadMarket,futures:loadFuturesPanel,territories:loadTerritories,factions:loadFactions,expeditions:loadExpeditions,forum:loadForum,chat:initChat,leaderboard:loadLeaderboard,achievements:loadAchievements,tasks:loadDailyTasks,craft:loadCraft,god:loadGod,war:loadWar,arena:loadArena,bounty:loadBounty,spy:loadSpy};
     if(loaders[name])loaders[name]();
 }
 
@@ -576,14 +584,14 @@ async function stockTrade(code,dir){
     const amt=parseInt(document.getElementById('st-amount')?.value||100);
     try{
         const r=await api('/stocks/trade',{method:'POST',body:JSON.stringify({code,direction:dir,amount:amt})});
-        if(r){alert(r.msg);showStockDetail(code)}
+        if(r){showToast(r.msg);showStockDetail(code)}
     }catch(e){
         if(e.message&&e.message.includes('涨停')){showToast('该股已涨停，无法买入');}
         else if(e.message&&e.message.includes('跌停')){showToast('该股已跌停，无法卖出');}
-        else{alert(e.message||'交易失败');}
+        else{showToast(e.message||'交易失败');}
     }
 }
-async function stockPreview(code){const amt=parseInt(document.getElementById('st-amount')?.value||100);const r=await api(`/stocks/trade_preview?code=${code}&direction=buy&amount=${amt}`);if(r){document.getElementById('st-preview').innerHTML=`<small>总价:${r.total.toFixed(2)} 手续费:${r.commission.toFixed(2)} ${r.can_afford?'✅余额充足':'❌余额不足'} (余额:${r.gold.toFixed(0)} 最大:${r.max_buy}股)</small>`}}
+async function stockPreview(code){const amt=parseInt(document.getElementById('st-amount')?.value||100);const r=await api(`/stocks/trade_preview?code=${code}&direction=buy&amount=${amt}`);if(r){document.getElementById('st-preview').innerHTML=`<small>总价:${r.total.toFixed(2)} 手续费:${r.commission.toFixed(2)} ${r.can_afford?'✅余额充足':'❌余额不足'} (余额:${r.gold.toFixed(0)} 最大:${r.max_buy}股) V9:含0.3%佣金+0.1%印花税</small>`}}
 async function stockWatch(code,action){const r=await api('/stocks/watchlist',{method:'POST',body:JSON.stringify({code,action})});if(r)alert(r.msg)}
 async function loadPortfolio(){const r=await api('/stocks/portfolio');if(!r)return;document.getElementById('portfolio-area').innerHTML=r.positions.length?`<div style="overflow-x:auto"><table><tr><th>股票</th><th>数量</th><th>成本</th><th>盈亏%</th></tr>${r.positions.map(p=>`<tr><td>${p.name}</td><td>${p.amount}</td><td>${Number(p.avg_cost).toFixed(2)}</td><td class="${(p.profit_pct||0)>0?'up':'down'}">${(p.profit_pct||0).toFixed(1)}%</td></tr>`).join('')}</table></div>`:'暂无持仓'}
 function drawKline(klines){const c=document.getElementById('kline-canvas');if(!c||!klines.length)return;const ctx=c.getContext('2d');c.width=c.offsetWidth;c.height=c.offsetHeight;const w=c.width,kh=c.height,prices=klines.map(k=>[Number(k.open_price),Number(k.high_price),Number(k.low_price),Number(k.close_price)]),hi=Math.max(...prices.flat()),lo=Math.min(...prices.flat()),rng=hi-lo||1,bw=Math.max(2,w/klines.length-1);ctx.clearRect(0,0,w,kh);klines.forEach((k,i)=>{const x=i*(bw+1),o=kh-(prices[i][0]-lo)/rng*(kh-20)-10,cl=kh-(prices[i][3]-lo)/rng*(kh-20)-10,h=kh-(prices[i][1]-lo)/rng*(kh-20)-10,l=kh-(prices[i][2]-lo)/rng*(kh-20)-10,up=prices[i][3]>=prices[i][0];ctx.strokeStyle=up?'#ef4444':'#22c55e';ctx.fillStyle=up?'rgba(239,68,68,.3)':'rgba(34,197,94,.3)';ctx.fillRect(x,Math.min(o,cl),bw,Math.abs(cl-o)||1);ctx.beginPath();ctx.moveTo(x+bw/2,h);ctx.lineTo(x+bw/2,l);ctx.stroke()})}
@@ -643,7 +651,11 @@ async function closeFuture(id){const r=await api('/futures/close/'+id,{method:'P
 // ============ Territories ============
 async function loadTerritories(){
     const r=await api('/territories');if(!r)return;
-    let h=`<div class="card"><h3>🗺️ 星际领地</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">占领领地可每30分钟自动产出资源</p>`;
+    let h=`<div class="card"><h3>🗺️ 星际领地</h3><p style="color:var(--muted);font-size:12px;margin-bottom:6px">占领领地可每30分钟自动产出资源</p>
+    <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="collectAllTerr()">📦 一键收取全部</button>
+        <button class="btn btn-danger" onclick="captureAllTerr()">⚔️ 一键夺取</button>
+    </div>`;
     r.territories.forEach(t=>{
         const isMine=t.is_mine,ownerCls=t.owner_name?(isMine?'mine-tag':'owned'):'free';
         const ownerText=t.owner_name?(isMine?`👑 ${t.owner_name}（我）`:`👑 ${t.owner_name}`):'无主';
@@ -709,6 +721,9 @@ function startTerrCollectCooldown(terrId,seconds){
 }
 
 async function captureTerr(id){const r=await api('/territories/'+id+'/capture',{method:'POST'});if(r){alert(r.msg);loadTerritories()}}
+// V9: 一键收取/夺取
+async function collectAllTerr(){const r=await api('/territories/collect_all',{method:'POST'});if(r){showToast(r.msg);loadTerritories();loadColony()}}
+async function captureAllTerr(){const r=await api('/territories/capture_all',{method:'POST'});if(r){showToast(r.msg);loadTerritories()}else{showToast('没有可夺取的领地')}}
 
 // ============ Factions ============
 async function loadFactions(){
@@ -750,8 +765,8 @@ async function loadExpeditions(){
     h+=`</table></div></div>`;
     document.getElementById('panel-expeditions').innerHTML=h;
 }
-async function launchExp(){const r=await api('/expeditions/launch',{method:'POST',body:JSON.stringify({target_sector:exp_sector.value,fleet_size:parseInt(exp_fleet.value)})});if(r){alert(r.msg);loadExpeditions()}}
-async function claimExp(id){const r=await api('/expeditions/'+id+'/claim',{method:'POST'});if(r){alert(r.msg);loadExpeditions()}}
+async function launchExp(){const r=await api('/expeditions/launch',{method:'POST',body:JSON.stringify({target_sector:exp_sector.value,fleet_size:parseInt(exp_fleet.value)})});if(r){showToast(r.msg);loadExpeditions()}}
+async function claimExp(id){const r=await api('/expeditions/'+id+'/claim',{method:'POST'});if(r){showToast(r.msg);loadExpeditions();loadColony()}}
 
 // ============ Forum ============
 let forumCat='general';
@@ -908,12 +923,15 @@ async function loadCraft(){
         h+=`<div class="card"><h3 style="font-size:14px">${rc.name} → ${rc.output_name}×${rc.output}</h3>
         <p style="font-size:12px">需要: ${inputs}</p>
         <div class="flex-gap"><input id="craft-amt-${rc.id}" type="number" value="1" min="1" style="width:60px">
-        <button class="btn btn-sm ${rc.can_craft?'btn-primary':'btn-danger'}" onclick="doCraft('${rc.id}')" ${rc.can_craft?'':'disabled'}>合成</button></div></div>`;
+        <button class="btn btn-sm ${rc.can_craft?'btn-primary':'btn-danger'}" onclick="doCraft('${rc.id}')" ${rc.can_craft?'':'disabled'}>合成</button>
+        <button class="btn btn-sm btn-gold" onclick="doCraftMax('${rc.id}')" ${rc.can_craft?'':'disabled'}>快速合成</button></div></div>`;
     });
     h+=`</div>`;
     document.getElementById('panel-craft').innerHTML=h;
 }
-async function doCraft(id){const amtEl=document.getElementById('craft-amt-'+id);const r=await api('/colony/craft',{method:'POST',body:JSON.stringify({recipe_id:id,amount:parseInt(amtEl?.value||1)})});if(r){alert(r.msg);loadCraft();loadColony()}}
+async function doCraft(id){const amtEl=document.getElementById('craft-amt-'+id);const r=await api('/colony/craft',{method:'POST',body:JSON.stringify({recipe_id:id,amount:parseInt(amtEl?.value||1)})});if(r){showToast(r.msg);loadCraft();loadColony()}}
+// V9: 快速合成（最大数量）
+async function doCraftMax(id){const r=await api('/colony/craft_max',{method:'POST',body:JSON.stringify({recipe_id:id,amount:1})});if(r){showToast(r.msg);loadCraft();loadColony()}}
 
 // ============ God AI ============
 async function loadGod(){
@@ -1175,11 +1193,21 @@ async function loadBounty(){
     document.getElementById('panel-bounty').innerHTML=h;
 }
 async function showPlaceBounty(){
-    const tid=prompt('目标殖民地ID:');
-    const amt=prompt('悬赏金额(最低500):');
-    if(!tid||!amt)return;
-    await api('/bounty/place','POST',{target_id:parseInt(tid),amount:parseInt(amt)});
-    toast('悬赏发布成功!');loadBounty();
+    const targets=await api('/raid/targets');
+    if(!targets||!targets.targets){showToast('加载目标失败');return;}
+    let h=`<div class="card"><h3>🗡️ 发布悬赏</h3>
+    <select id="bounty-target" style="margin-bottom:4px">${targets.targets.map(t=>`<option value="${t.id}">${t.name} (Lv${t.level})</option>`).join('')}</select>
+    <input id="bounty-amt" type="number" value="500" min="500" placeholder="金额(最低500)">
+    <button class="btn btn-gold" onclick="doPlaceBounty()">确认悬赏</button>
+    <button class="btn btn-sm" onclick="loadBounty()">取消</button></div>`;
+    document.getElementById('panel-bounty').innerHTML=h;
+}
+async function doPlaceBounty(){
+    const tid=document.getElementById('bounty-target')?.value;
+    const amt=parseInt(document.getElementById('bounty-amt')?.value||0);
+    if(!tid||amt<500){showToast('请选择目标并输入至少500金');return;}
+    const r=await api('/bounty/place','POST',{target_id:parseInt(tid),amount:amt});
+    if(r){showToast(r.msg);loadBounty();}
 }
 
 // ============ V8: 间谍 ============
@@ -1203,11 +1231,20 @@ async function loadSpy(){
     document.getElementById('panel-spy').innerHTML=h;
 }
 async function launchSpy(opType){
-    const tid=prompt('目标殖民地ID:');
-    if(!tid)return;
+    const targets=await api('/raid/targets');
+    if(!targets||!targets.targets){showToast('加载目标失败');return;}
+    let h=`<div class="card"><h3>🕵️ 选择间谍目标</h3>
+    <select id="spy-target">${targets.targets.map(t=>`<option value="${t.id}">${t.name} (Lv${t.level})</option>`).join('')}</select>
+    <button class="btn btn-primary" onclick="doSpy('${opType}')">确认执行</button>
+    <button class="btn btn-sm" onclick="loadSpy()">取消</button></div>`;
+    document.getElementById('panel-spy').innerHTML=h;
+}
+async function doSpy(opType){
+    const tid=document.getElementById('spy-target')?.value;
+    if(!tid){showToast('请选择目标');return;}
     const r=await api('/espionage/launch','POST',{target_id:parseInt(tid),op_type:opType});
     if(!r)return;
-    toast(`${opType}: ${r.result} (成功率${r.success_rate}%)`);
+    showToast(`${opType}: ${r.result} (成功率${r.success_rate}%)`);
     loadSpy();
 }
 
