@@ -87,7 +87,7 @@ services:
     environment:
       TZ: "Asia/Shanghai"
     ports:
-      - "80:80"
+      - "8081:80"
       - "58018:58018"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

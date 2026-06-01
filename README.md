@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="http://150.158.10.10"><img src="https://img.shields.io/badge/🎮_在线试玩-150.158.10.10-00d4ff?style=for-the-badge" alt="Demo"></a>
+  <a href="http://150.158.10.10:8081"><img src="https://img.shields.io/badge/🎮_在线试玩-150.158.10.10:8081-00d4ff?style=for-the-badge" alt="Demo"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/version-9.0_深渊纪元-ff4444?style=for-the-badge" alt="Version"></a>
 </p>
@@ -94,7 +94,7 @@ cd space-colony
 docker-compose up -d --build
 ```
 
-打开浏览器访问 `http://<你的IP>` 开始游戏。
+打开浏览器访问 `http://<你的IP>:8081` 开始游戏。
 
 **要求**：Docker 20.10+ · 2GB+ 内存 · 1 核 CPU
 
@@ -158,7 +158,7 @@ space-colony/
 答案：V5 → V9，迭代还在继续。
 
 - 🐙 GitHub: [@wangcc7](https://github.com/wangcc7)
-- 🎮 Demo: [http://150.158.10.10](http://150.158.10.10)
+- 🎮 Demo: [http://150.158.10.10:8081](http://150.158.10.10:8081)
 
 ---
 
